@@ -1,0 +1,7 @@
+---
+- name: Using Zabbix collection to install Zabbix Agent for Devices on Noble Net
+  hosts: Noble-Net-VMs-Ubuntu-Debian-All, Noble-Net-Hosts, Noble-Net-pbs
+  ignore_unreachable: true
+  roles:
+    - role: community.zabbix.zabbix_agent
+      zabbix_agent_server: [zabbixserverip]
