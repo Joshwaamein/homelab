@@ -31,4 +31,5 @@ This script automates the installation of various applications and tools on Ubun
 
 ## Usage
 
-1. Download the script:
+Download the script and pipe to bash. Do not run the script with Sudo.
+curl -sSL https://raw.githubusercontent.com/Joshwaamein/ubuntu-apps/main/ubuntu.sh | bash
