@@ -7,7 +7,7 @@ echo -e "\e[34mCurrent user is $USER\e[0m"
 
 if [ "$EUID" -eq 0 ]; then
   echo -e "\e[34mPlease do not run as root\e[0m"
-  exit 1
+  exit 1https://github.com/Joshwaamein/ubuntu-apps/edit/main/ubuntu.sh
 fi
 
 echo -e "\e[34mStarting installation script...\e[0m"
@@ -30,8 +30,7 @@ sudo snap install brave
 
 # Install Discord
 echo -e "\e[34mInstalling Discord...\e[0m"
-wget -O discord.deb "https://discord.com/api/download?platform=linux&format=deb"
-sudo apt install -y ./discord.deb
+sudo snap install discord
 
 # Install VLC
 echo -e "\e[34mInstalling VLC...\e[0m"
@@ -59,9 +58,7 @@ sudo snap install obsidian --classic
 
 # Install Lutris
 echo -e "\e[34mInstalling Lutris...\e[0m"
-sudo add-apt-repository ppa:lutris-team/lutris
-sudo apt update
-sudo apt install -y lutris
+sudo apt install lutris -y
 
 # Install Steam
 echo -e "\e[34mInstalling Steam...\e[0m"
