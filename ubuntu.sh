@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo -e "\e[34mThis script will configure your Ubuntu installation with a baseline of applications. Do not run this script as sudo. This script should only be run on a fresh install of Ubuntu. You can cancel the script within the next 5 seconds\e[0m"
+echo -e "\e[34mThis script will configure your Ubuntu installation with a baseline of applications for Ubuntu 24.04 only. Do not run this script as sudo. This script should only be run on a fresh install of Ubuntu. You can cancel the script within the next 5 seconds\e[0m"
 sleep 5
 
 echo -e "\e[34mCurrent user is $USER\e[0m"
@@ -18,22 +18,15 @@ sudo apt update
 
 # Install essential packages
 echo -e "\e[34mInstalling essential packages...\e[0m"
-sudo apt install -y curl wget software-properties-common apt-transport-https gnupg
+sudo apt install -y curl wget software-properties-common apt-transport-https gnupg snapd git
 
 # Install VSCode
 echo -e "\e[34mInstalling Visual Studio Code...\e[0m"
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
-sudo install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/
-echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
-sudo apt update
-sudo apt install -y code
+sudo snap install code --classic
 
 # Install Brave Browser
-echo -e "\e[34mInstalling Brave Browser...\e[0m"
-sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
-sudo apt update
-sudo apt install -y brave-browser
+echo -e "\e[34mInstalling Brave...\e[0m"
+sudo snap install brave
 
 # Install Discord
 echo -e "\e[34mInstalling Discord...\e[0m"
@@ -45,24 +38,24 @@ echo -e "\e[34mInstalling VLC...\e[0m"
 sudo apt install -y vlc
 
 # Install Apache OpenOffice
-echo -e "\e[34mInstalling Apache OpenOffice...\e[0m"
-wget "https://sourceforge.net/projects/openofficeorg.mirror/files/latest/download" -O openoffice.tar.gz
-tar -xvzf openoffice.tar.gz
-cd apache-openoffice-*
-sudo dpkg -i DEBS/*.deb
-sudo dpkg -i DEBS/desktop-integration/*.deb
-cd ..
+#echo -e "\e[34mInstalling Apache OpenOffice...\e[0m"
+#wget "https://sourceforge.net/projects/openofficeorg.mirror/files/latest/download" -O openoffice.tar.gz
+#tar -xvzf openoffice.tar.gz
+#cd apache-openoffice-*
+#sudo dpkg -i DEBS/*.deb
+#sudo dpkg -i DEBS/desktop-integration/*.deb
+#cd ..
 
 # Install OneDrive
-echo -e "\e[34mInstalling OneDrive...\e[0m"
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/obs-onedrive.gpg] https://download.opensuse.org/repositories/home:/npreining:/debian-ubuntu-onedrive/xUbuntu_$(lsb_release -rs)/ ./" | sudo tee /etc/apt/sources.list.d/onedrive.list
+echo -e "\e[34mInstalling Onedrive...\e[0m"
+wget -qO - https://download.opensuse.org/repositories/home:/npreining:/debian-ubuntu-onedrive/xUbuntu_24.04/Release.key | gpg --dearmor | sudo tee /usr/share/keyrings/obs-onedrive.gpg > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/obs-onedrive.gpg] https://download.opensuse.org/repositories/home:/npreining:/debian-ubuntu-onedrive/xUbuntu_24.04/ ./" | sudo tee /etc/apt/sources.list.d/onedrive.list
 sudo apt-get update
-sudo apt install -y --no-install-recommends --no-install-suggests onedrive
+sudo apt install --no-install-recommends --no-install-suggests onedrive
 
 # Install Obsidian
 echo -e "\e[34mInstalling Obsidian...\e[0m"
-wget https://github.com/obsidianmd/obsidian-releases/releases/download/v1.4.16/obsidian_1.4.16_amd64.deb
-sudo dpkg -i obsidian_1.4.16_amd64.deb
+sudo snap install obsidian --classic
 
 # Install Lutris
 echo -e "\e[34mInstalling Lutris...\e[0m"
@@ -91,6 +84,14 @@ curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/focal.list | sudo tee /etc/a
 sudo apt update
 sudo apt install -y tailscale
 
+#Install Parsec
+echo -e "\e[34mInstalling Parsec...\e[0m"
+sudo snap install parsec --classic
+
+#Setting up Dynamic Wallpaper
+echo -e "\e[34mInstalling Wallpaper...\e[0m"
+curl -s https://wallpapers.manishk.dev/install.sh | bash -s Catalina
+
 # Update firmware
 echo -e "\e[34mUpdating firmware...\e[0m"
 sudo apt install -y fwupd
@@ -108,4 +109,4 @@ sudo apt upgrade -y
 sudo apt autoremove -y
 sudo apt clean
 
-echo -e "\e[34mInstallation script completed.\e[0m"
+echo -e "\e[34mInstallation script completed.You need to run sudo tailscale up to configure tailscale. You need to start onedrive with onedrive --monitor. You should also set your wallpaper to the dynamic option in settings. \e[0m"
