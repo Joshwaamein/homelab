@@ -76,10 +76,7 @@ sudo ./pia-linux-3.3.1-06924.run
 
 # Install Tailscale
 echo -e "\e[34mInstalling Tailscale...\e[0m"
-curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/focal.gpg | sudo apt-key add -
-curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/focal.list | sudo tee /etc/apt/sources.list.d/tailscale.list
-sudo apt update
-sudo apt install -y tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
 
 #Install Parsec
 echo -e "\e[34mInstalling Parsec...\e[0m"
