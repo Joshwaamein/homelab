@@ -18,7 +18,7 @@ sudo apt update
 
 # Install essential packages
 echo -e "\e[34mInstalling essential packages...\e[0m"
-sudo apt install -y curl wget software-properties-common apt-transport-https gnupg snapd git
+sudo apt install -y curl wget software-properties-common apt-transport-https gnupg snapd git neofetch traceroute
 
 # Install VSCode
 echo -e "\e[34mInstalling Visual Studio Code...\e[0m"
