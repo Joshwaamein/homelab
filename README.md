@@ -17,7 +17,7 @@ This script configures unattended upgrades and automatic reboots on Ubuntu serve
 
 2. Run the following command to download and execute the script:
 
-curl -sSL https://raw.githubusercontent.com/Joshwaamein/custom-zsh/main/ubuntu-gnome-terminal.sh | bash
+curl -sSL https://raw.githubusercontent.com/Joshwaamein/Unattended-Upgrades/refs/heads/main/unattended-upgrades.sh | bash
 
 3. The script will run and configure unattended upgrades on your system.
 
