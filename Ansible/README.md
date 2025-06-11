@@ -1,5 +1,2 @@
-# ansible
-
-This is where I store my various ansible configurations, docs and code. 
-
-:)
+# Ansible
+Ansible playbooks & configurations to deploy via CI/CD
