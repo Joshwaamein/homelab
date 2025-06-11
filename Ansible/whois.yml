@@ -1,3 +1,0 @@
-- name: Print username
-  debug:
-    msg: "Running as user: {{ ansible_user }}"
