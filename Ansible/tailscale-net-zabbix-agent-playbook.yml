@@ -1,6 +1,6 @@
 ---
 - name: Using Zabbix collection to install Zabbix Agent for Devices on Tailscale Net
-  hosts: Ubuntu-VMs, Hosts, pbs
+  hosts: ubuntu_vms, pbs, hosts
   gather_facts: true
   become: true
   ignore_unreachable: true
@@ -18,6 +18,10 @@
           - Template OS Linux
 
   tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
     - name: Print summary
       debug:
         msg: "Zabbix Agent installed and configured on {{ inventory_hostname }}"

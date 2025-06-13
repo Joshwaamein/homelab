@@ -1,9 +1,13 @@
 ---
 - name: Get usernames from /etc/passwd on all servers
-  hosts: Ubuntu-VMs, pbs, Hosts
+  hosts: ubuntu_vms, pbs, hosts
   gather_facts: true
   ignore_errors: true
   tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
     - name: Extract usernames
       shell: "cut -d: -f1 /etc/passwd"
       register: user_list

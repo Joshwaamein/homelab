@@ -1,12 +1,16 @@
 ---
 - name: Install fail2ban and configure sshd
-  hosts: Ubuntu-VMs, pbs, Hosts
+  hosts: ubuntu_vms, pbs, hosts
   gather_facts: true
   become: true
   ignore_unreachable: true
   tags: fail2ban
 
   tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
     - name: Notify if skipping non-Debian/Ubuntu host for config
       debug:
         msg: "Skipping config copy on non-Debian/Ubuntu host: {{ inventory_hostname }}"

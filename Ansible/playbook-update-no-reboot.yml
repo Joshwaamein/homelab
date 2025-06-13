@@ -1,12 +1,16 @@
 ---
 - name: Update and upgrade Ubuntu and Debian systems (no reboot)
-  hosts: Ubuntu-VMs, Hosts, pbs
+  hosts: ubuntu_vms, pbs, hosts
   gather_facts: true
   become: true
   ignore_unreachable: true
   tags: update,upgrade
 
   tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
     - name: Notify if skipping non-Debian/Ubuntu host
       debug:
         msg: "Skipping non-Debian/Ubuntu host: {{ inventory_hostname }}"
