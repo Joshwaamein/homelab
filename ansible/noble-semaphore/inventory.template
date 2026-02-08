@@ -1,0 +1,71 @@
+# Ansible Inventory Template
+# Copy this file to 'inventory' and fill in your actual hosts
+
+## Noble Network - Ubuntu/Debian VMs
+[ubuntu_vms]
+# Add your Ubuntu/Debian VM IPs here
+# Example: 100.119.2.84        # hostname1
+
+## Noble Network - AlmaLinux VMs
+[noble_net_alma]
+# Add your AlmaLinux VM IPs here
+
+## Noble Network - Hosts (Hypervisors, Raspberry Pi, etc.)
+[hosts]
+# Add your hypervisor IPs here
+
+## Noble Network - PBS (Proxmox Backup Server)
+[pbs]
+# Add your PBS IPs here
+
+## Noble Network - Windows Hosts
+[noble_net_windows]
+# Add your Windows host IPs here
+
+-----------------------------------------------------------------------------------------
+
+## By application for UFW
+[evernode]
+# Add Evernode nodes here
+
+[xahau]
+# Add Xahau nodes here
+
+[unifi]
+# Add UniFi controller hosts here
+
+[nginx]
+# Add Nginx servers here
+
+[servarrr]
+# Add Servarrr instance here
+
+[pi4]
+# Add Raspberry Pi 4 hosts here
+
+[pve_data]
+# Add PVE data hosts here
+
+[presearch]
+# Add Presearch nodes here
+
+[myst]
+# Add Myst nodes here
+
+[pihole]
+# Add Pi-hole instances here
+
+[ubuntu_docker]
+# Add Ubuntu Docker hosts here
+
+[ansible]
+localhost
+
+[servarr]
+# Add Servarr instances here
+
+[proxmox]
+# Add Proxmox hosts here
+
+[discord_bot]
+# Add Discord bot hosts here

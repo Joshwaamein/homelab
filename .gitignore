@@ -1,0 +1,18 @@
+# Sensitive inventory files with real IPs and hostnames
+ansible/noble-semaphore/inventory
+ansible/noble-semaphore/users.txt
+
+# Exclude entire semaphore directory (contains personal configs, VS Code server files, ansible roles)
+semaphore/
+
+# VS Code directories
+.vscode/
+.vscode-server/
+
+# Logs
+*.log
+
+# SSH and temporary files
+*.sock
+*.swp
+*~

@@ -1,0 +1,57 @@
+---
+- name: Install fail2ban and configure sshd
+  hosts: ubuntu_vms, pbs, hosts
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: fail2ban
+
+  tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
+    - name: Notify if skipping non-Debian/Ubuntu host for config
+      debug:
+        msg: "Skipping config copy on non-Debian/Ubuntu host: {{ inventory_hostname }}"
+      when: ansible_os_family != "Debian"
+      changed_when: false
+      run_once: true
+
+    - name: Install fail2ban (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: fail2ban
+        update_cache: true
+      when: ansible_os_family == "Debian"
+      tags: install
+
+    - name: Install fail2ban (AlmaLinux)
+      ansible.builtin.dnf:
+        name: fail2ban
+        state: present
+      when: ansible_os_family == "RedHat"
+      tags: install
+
+    - name: Copy fail2ban config file (Debian/Ubuntu)
+      ansible.builtin.copy:
+        src: configfiles/debian-sshd-default.conf
+        dest: /etc/fail2ban/jail.d/debian-sshd-default.conf
+        mode: '0644'
+        owner: root
+        group: root
+      when: ansible_os_family == "Debian"
+      notify: Restart fail2ban
+      tags: config
+
+    - name: Print summary
+      debug:
+        msg: "fail2ban installed and configured on {{ inventory_hostname }}"
+      changed_when: false
+
+  handlers:
+    - name: Restart fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+        enabled: yes
+        daemon_reload: yes

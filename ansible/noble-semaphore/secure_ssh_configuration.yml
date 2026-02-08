@@ -1,0 +1,35 @@
+---
+- name: Secure SSH configuration (no software install)
+  hosts: all
+  become: true
+  ignore_unreachable: true
+  tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+      when: ansible_facts['os_family'] != 'Windows'
+    
+    - name: Configure PermitRootLogin
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+        state: present
+      notify: restart ssh
+      when: ansible_facts['os_family'] != 'Windows'
+    
+    - name: Configure PasswordAuthentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: restart ssh
+      when: ansible_facts['os_family'] != 'Windows'
+      
+  handlers:
+    - name: restart ssh
+      service:
+        name: "{{ 'ssh' if ansible_service_mgr == 'systemd' else 'sshd' }}"
+        state: restarted
+      when: ansible_facts['os_family'] != 'Windows'

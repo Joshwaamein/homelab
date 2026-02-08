@@ -1,0 +1,35 @@
+---
+- name: Configure timezone to Europe/London on Noble Network Linux servers (ignoring unreachable/non-systemd hosts)
+  # Target groups that are expected to be Linux and use systemd
+  hosts: ubuntu_vms, noble_net_alma, hosts, pbs
+  gather_facts: true # Ensure Ansible gathers facts like ansible_service_mgr and ansible_os_family
+  become: true       # Required to make system-level changes
+  ignore_unreachable: true # This makes the play continue even if hosts are initially unreachable
+
+  tasks:
+    - name: Set timezone to Europe/London using community.general.timezone module
+      community.general.timezone:
+        name: Europe/London
+      # Corrected 'when' condition: Check if 'ansible_service_mgr' is defined BEFORE comparing its value.
+      # This prevents failure on hosts where facts couldn't be gathered.
+      when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
+      notify: Restart relevant services
+
+  handlers:
+    # Handler for Debian/Ubuntu systems
+    - name: Restart cron service (Debian/Ubuntu)
+      listen: Restart relevant services
+      ansible.builtin.service:
+        name: cron
+        state: restarted
+      # Robust 'when' condition for handlers as well
+      when: ansible_os_family is defined and ansible_os_family == 'Debian'
+
+    # Handler for RedHat/AlmaLinux systems
+    - name: Restart crond service (RedHat/AlmaLinux)
+      listen: Restart relevant services
+      ansible.builtin.service:
+        name: crond
+        state: restarted
+      # Robust 'when' condition for handlers as well
+      when: ansible_os_family is defined and ansible_os_family == 'RedHat'
