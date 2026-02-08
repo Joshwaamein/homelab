@@ -11,8 +11,8 @@ homelab/
 │       ├── playbooks/    # Infrastructure automation playbooks
 │       ├── setup.sh      # One-click Ansible setup
 │       └── configure-semaphore.py  # Semaphore auto-config
-├── data-analytics/      # Multi-chain crypto & system monitoring platform
-│   ├── scripts/         # Data collection scripts (XRPL, Xahau, Ethereum)
+├── data-analytics/      # Multi-chain crypto & system and environment monitoring platform
+│   ├── scripts/         # Data collection scripts (XRPL, Xahau, Ethereum, Prometheus)
 │   ├── sql/             # PostgreSQL database schemas
 │   ├── dashboards/      # Grafana dashboard templates
 │   ├── utils/           # Shared utility functions
