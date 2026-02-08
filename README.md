@@ -11,6 +11,9 @@ homelab/
 │       ├── playbooks/    # Infrastructure automation playbooks
 │       ├── setup.sh      # One-click Ansible setup
 │       └── configure-semaphore.py  # Semaphore auto-config
+├── scripts/             # Utility scripts for setup and deployment
+│   ├── setup-ssh-key-on-remote-host.sh  # SSH key automation
+│   └── zabbixdeploy.sh  # Zabbix deployment
 ├── semaphore/           # Semaphore UI configuration (not tracked)
 └── README.md           # This file
 ```
