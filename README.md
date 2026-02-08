@@ -11,6 +11,13 @@ homelab/
 │       ├── playbooks/    # Infrastructure automation playbooks
 │       ├── setup.sh      # One-click Ansible setup
 │       └── configure-semaphore.py  # Semaphore auto-config
+├── data-analytics/      # Multi-chain crypto & system monitoring platform
+│   ├── scripts/         # Data collection scripts (XRPL, Xahau, Ethereum)
+│   ├── sql/             # PostgreSQL database schemas
+│   ├── dashboards/      # Grafana dashboard templates
+│   ├── utils/           # Shared utility functions
+│   ├── setup.sh         # Automated database setup
+│   └── README.md        # Platform documentation
 ├── scripts/             # Utility scripts for setup and deployment
 │   ├── setup-ssh-key-on-remote-host.sh  # SSH key automation
 │   ├── deploy-zsh-setup.sh              # Zsh environment setup
@@ -31,6 +38,27 @@ sudo ./setup.sh
 ```
 
 ## 🏗️ Infrastructure Components
+
+### Data Analytics Platform
+Multi-chain cryptocurrency and system monitoring platform with PostgreSQL backend.
+
+**Features:**
+- ✅ Multi-blockchain balance tracking (XRPL, Xahau, Ethereum)
+- ✅ Raspberry Pi system metrics collection
+- ✅ Evernode host statistics monitoring
+- ✅ Automated database setup with SQL schemas
+- ✅ Grafana dashboard templates included
+- ✅ Centralized configuration management
+- ✅ Production-ready with error handling and rate limiting
+
+**Capabilities:**
+- Track cryptocurrency balances with USD valuations
+- Monitor Pi system metrics (CPU, memory, network)
+- Collect internet speed test results
+- Store Evernode host performance data
+- Visualize data with pre-built Grafana dashboards
+
+[→ Full Data Analytics Documentation](data-analytics/README.md)
 
 ### Ansible Automation
 Complete infrastructure automation using Ansible with Semaphore UI.
@@ -90,6 +118,7 @@ The following sensitive information is **excluded from git**:
 ## 📚 Documentation
 
 ### Component Documentation
+- **[Data Analytics Platform](data-analytics/README.md)** - Crypto & system monitoring
 - **[Ansible Automation](ansible/noble-semaphore/ANSIBLE-README.md)** - Complete Ansible guide
 - **[Setup Scripts](ansible/noble-semaphore/setup.sh)** - Installation automation
 - **[Semaphore Config](ansible/noble-semaphore/configure-semaphore.py)** - Semaphore setup
