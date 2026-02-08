@@ -600,13 +600,16 @@ install_system_dependencies() {
     
     case "$OS_ID" in
         ubuntu|debian)
+            apt update
             apt install -y \
                 git \
                 curl \
                 wget \
                 unzip \
                 build-essential \
-                python3-pip
+                python3-pip \
+                fonts-powerline \
+                powerline
             ;;
         centos|rhel|almalinux)
             yum groupinstall -y "Development Tools"
@@ -615,11 +618,44 @@ install_system_dependencies() {
                 curl \
                 wget \
                 unzip \
-                python3-pip
+                python3-pip \
+                powerline \
+                powerline-fonts
             ;;
     esac
     
-    log_success "System dependencies installed"
+    log_success "System dependencies installed (including Powerline fonts)"
+}
+
+configure_gnome_terminal() {
+    log_step "Configuring GNOME Terminal colors..."
+    
+    # Check if GNOME Terminal and gsettings are available
+    if ! command -v gnome-terminal &> /dev/null || ! command -v gsettings &> /dev/null; then
+        log_info "GNOME Terminal not detected, skipping color configuration"
+        return 0
+    fi
+    
+    # Get default profile ID
+    local profile_id=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'")
+    
+    if [ -z "$profile_id" ]; then
+        log_warn "Could not get GNOME Terminal profile ID"
+        return 0
+    fi
+    
+    local profile_path="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${profile_id}/"
+    
+    # Set custom colors (black background, green foreground)
+    log_info "Setting terminal colors (black background, green text)..."
+    
+    gsettings set "$profile_path" use-theme-colors false
+    gsettings set "$profile_path" bold-color-same-as-fg false
+    gsettings set "$profile_path" background-color '#000000'
+    gsettings set "$profile_path" foreground-color '#29B443'
+    gsettings set "$profile_path" bold-color '#24FF00'
+    
+    log_success "GNOME Terminal colors configured"
 }
 
 show_completion_info() {
@@ -706,6 +742,7 @@ main() {
     
     # Deploy configuration
     deploy_zshrc
+    configure_gnome_terminal
     change_default_shell
     
     # Show completion info
