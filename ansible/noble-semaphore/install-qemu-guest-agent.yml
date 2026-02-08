@@ -1,0 +1,46 @@
+---
+- name: Install and manage QEMU Guest Agent
+  hosts: ubuntu_vms, pbs
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: qemu,guest-agent
+
+  tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
+    - name: Notify if skipping non-Debian/Ubuntu host
+      debug:
+        msg: "Skipping non-Debian/Ubuntu host: {{ inventory_hostname }}"
+      when: ansible_os_family != "Debian"
+      changed_when: false
+      run_once: true
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+      tags: update
+
+    - name: Install QEMU Guest Agent
+      apt:
+        name: qemu-guest-agent
+        state: present
+      when: ansible_os_family == "Debian"
+      tags: install
+
+    - name: Enable and start QEMU Guest Agent service
+      systemd:
+        name: qemu-guest-agent
+        enabled: yes
+        state: started
+      when: ansible_os_family == "Debian"
+      tags: service
+
+    - name: Print summary of QEMU Guest Agent installation
+      debug:
+        msg: "QEMU Guest Agent installed and running on {{ inventory_hostname }}"
+      when: ansible_os_family == "Debian"
+      changed_when: false

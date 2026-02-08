@@ -1,0 +1,192 @@
+---
+- name: Configure UFW firewall rules for all hosts
+  hosts: ubuntu_vms, unifi, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, localhost
+  become: yes
+  ignore_unreachable: true
+  tasks:
+
+    - name: Ensure UFW is installed
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure UFW is installed (RedHat/Alma)
+      ansible.builtin.yum:
+        name: ufw
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Configure UFW for non-Proxmox hosts
+      block:
+
+        - name: Initialize UFW
+          block:
+            - community.general.ufw:
+                state: enabled
+            - community.general.ufw:
+                default: deny
+                direction: incoming
+
+        - name: Apply base firewall rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 10050
+            - 39098
+            - 44840
+
+        - name: Configure evernode rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+          loop:
+            - { port: 80, proto: tcp }
+            - { port: 443, proto: tcp }
+            - { port: 26201, proto: tcp }
+            - { port: 26202, proto: tcp }
+            - { port: 26203, proto: tcp }
+            - { port: 26204, proto: tcp }
+            - { port: 36525, proto: tcp }
+            - { port: 36526, proto: tcp }
+            - { port: 36527, proto: tcp }
+            - { port: 36528, proto: tcp }
+            - { port: 36529, proto: tcp }
+            - { port: 36530, proto: tcp }
+            - { port: 36531, proto: tcp }
+            - { port: 39064, proto: udp }
+            - { port: 39065, proto: udp }
+            - { port: 39066, proto: udp }
+            - { port: 39067, proto: udp }
+            - { port: 39068, proto: udp }
+            - { port: 39069, proto: udp }
+            - { port: 39070, proto: udp }
+            - { port: 22861, proto: tcp }
+            - { port: 22862, proto: tcp }
+            - { port: 22863, proto: tcp }
+            - { port: 22864, proto: tcp }
+            - { port: 22, proto: tcp }
+          when: inventory_hostname in groups.evernode
+
+        - name: Configure Unifi rules
+          community.general.ufw:
+            rule: allow
+            src: "{{ item.src }}"
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+          loop:
+            - { src: '100.0.0.0/8', port: 8080, proto: tcp }
+            - { src: '100.0.0.0/8', port: 8443, proto: tcp }
+            - { src: '100.0.0.0/8', port: 3478, proto: udp }
+            - { src: '100.0.0.0/8', port: 10001, proto: udp }
+            - { src: '100.0.0.0/8', port: 1900, proto: udp }
+            - { src: '192.168.0.0/16', port: 8080, proto: tcp }
+            - { src: '192.168.0.0/16', port: 8443, proto: tcp }
+            - { src: '192.168.0.0/16', port: 3478, proto: udp }
+            - { src: '192.168.0.0/16', port: 10001, proto: udp }
+            - { src: '192.168.0.0/16', port: 1900, proto: udp }
+          when: inventory_hostname in groups.unifi
+
+        - name: Configure Pi-hole rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 53
+            - 67
+            - 547
+            - 80
+            - 443
+            - 123
+          when: inventory_hostname in groups.pihole
+
+        - name: Configure servarr rules
+          community.general.ufw:
+            rule: "{{ item.rule | default('allow') }}"
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+          loop:
+            - { port: 22, proto: tcp }
+            - { port: 8080, proto: tcp }
+            - { port: 8787, proto: tcp }
+            - { port: 8191, proto: tcp }
+            - { port: 6767, proto: tcp }
+            - { port: 9982, proto: tcp }
+            - { port: 8686, proto: tcp }
+            - { port: 9000, proto: tcp }
+            - { port: 8096, proto: tcp }
+            - { port: 7878, proto: tcp }
+            - { port: 8989, proto: tcp }
+            - { port: 9696, proto: tcp }
+            - { port: 9981, proto: tcp }
+            - { port: 10050, proto: tcp }
+            - { port: 8388, proto: tcp }
+            - { port: 8888, proto: tcp }
+            - { port: 9117, proto: tcp }
+            - { port: 137, proto: udp, rule: deny }
+            - { port: 138, proto: udp, rule: deny }
+            - { port: 139, proto: tcp, rule: deny }
+            - { port: 445, proto: tcp, rule: deny }
+          when: inventory_hostname in groups.servarr
+
+        - name: Configure Ansible rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 3000
+          when: inventory_hostname in groups.ansible
+
+        - name: Configure pve_data rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 3000
+            - 8086
+            - 5432
+          when: inventory_hostname in groups.pve_data
+
+        - name: Configure xahau rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 80
+            - 443
+            - 21337
+            - 10050
+          when: inventory_hostname in groups.xahau
+
+        - name: Configure pi4 rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 5000
+          when: inventory_hostname in groups.pi4
+
+        - name: Configure ubuntu_docker rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+          loop:
+            - 22
+            - 9000
+            - 9443
+            - 8080
+            - 8082
+          when: inventory_hostname in groups.ubuntu_docker
+
+    - name: Reload UFW configuration
+      community.general.ufw:
+        state: reloaded
+      when: "'proxmox' not in group_names and 'pbs' not in group_names"

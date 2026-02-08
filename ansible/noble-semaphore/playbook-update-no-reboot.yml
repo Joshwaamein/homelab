@@ -1,0 +1,46 @@
+---
+- name: Update and upgrade Ubuntu and Debian systems (no reboot)
+  hosts: ubuntu_vms, pbs, hosts
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: update,upgrade
+
+  tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname | default(inventory_hostname) }}"
+
+    - name: Notify if host facts are missing
+      debug:
+        msg: "Skipping host {{ inventory_hostname }} because facts are unavailable"
+      when: ansible_os_family is not defined
+      changed_when: false
+
+    - name: Notify if skipping non-Debian/Ubuntu host
+      debug:
+        msg: "Skipping non-Debian/Ubuntu host: {{ inventory_hostname }}"
+      when: ansible_os_family is defined and ansible_os_family != "Debian"
+      changed_when: false
+      run_once: true
+
+    - name: Update apt repo and cache on all Debian/Ubuntu boxes
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+      when: ansible_os_family is defined and ansible_os_family == "Debian"
+      tags: update
+
+    - name: Upgrade all packages on servers (safe upgrade)
+      apt:
+        upgrade: safe
+        force_apt_get: yes
+      when: ansible_os_family is defined and ansible_os_family == "Debian"
+      tags: upgrade
+
+    - name: Print summary of updated hosts
+      debug:
+        msg: "Updated and upgraded packages on {{ inventory_hostname }}"
+      when: ansible_os_family is defined and ansible_os_family == "Debian"
+      changed_when: false
