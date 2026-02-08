@@ -4,6 +4,23 @@ This repository contains Ansible playbooks and configuration files for managing 
 
 ## 🎯 Quick Start
 
+### Automated Setup (Recommended)
+
+```bash
+# Run the setup script to install all dependencies
+cd /opt/ansible/noble-semaphore
+sudo ./setup.sh
+```
+
+The setup script will:
+- Install Ansible and required system packages
+- Install Python dependencies
+- Install Ansible collections
+- Configure Ansible directories
+- Verify the installation
+
+### Manual Setup
+
 ```bash
 # 1. Clone the repository
 cd /opt/ansible/noble-semaphore
@@ -17,9 +34,7 @@ cp inventory.template inventory
 # 4. Edit inventory with your actual hosts
 nano inventory
 
-# 5. Set up Ansible Vault for secrets
-cp group_vars/all/vault.yml.example group_vars/all/vault.yml
-nano group_vars/all/vault.yml
+# 5. (Optional) Encrypt vault.yml for extra security
 ansible-vault encrypt group_vars/all/vault.yml
 
 # 6. Run a playbook
