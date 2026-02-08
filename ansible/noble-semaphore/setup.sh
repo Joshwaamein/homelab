@@ -119,6 +119,8 @@ pip3 install --upgrade \
     pyyaml \
     jinja2
 
+echo -e "${GREEN}✓ Python dependencies installed${NC}"
+
 #################################################
 # 6. Set up Semaphore Database (if needed)
 #################################################

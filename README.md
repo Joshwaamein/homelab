@@ -313,11 +313,54 @@ If you get locked out after UFW configuration:
 2. Run: `sudo ufw disable`
 3. Fix rules, then re-enable
 
+## 🎛️ Semaphore Auto-Configuration
+
+### Automated Semaphore Setup
+
+Use the included script to automatically configure Semaphore with all your playbooks:
+
+```bash
+cd /opt/ansible/noble-semaphore
+./configure-semaphore.py
+```
+
+**What it does:**
+- Creates "Ansible Automation" project in Semaphore
+- Imports your SSH keys
+- Imports your inventory file
+- Creates templates for all 10 playbooks
+- Sets up automatic schedules:
+  - **Weekly Updates**: Every Sunday at 2 AM
+  - **Monthly Updates with Reboot**: 1st of month at 3 AM
+  - **Weekly User Report**: Every Monday at midnight
+
+**Requirements:**
+1. Semaphore must be running (http://localhost:3000)
+2. You need Semaphore admin credentials
+3. Inventory file must exist (`cp inventory.template inventory`)
+
+**After running:**
+- All playbooks will be available in Semaphore UI
+- Scheduled tasks will run automatically
+- Manual tasks can be triggered from the UI
+
+### Manual Semaphore Setup
+
+If you prefer to configure manually:
+1. Login to Semaphore at http://localhost:3000
+2. Create a new project
+3. Add your SSH key
+4. Add your inventory
+5. Add repository (file:///opt/ansible/noble-semaphore)
+6. Create templates for each playbook
+7. Set up schedules as needed
+
 ## 📊 Monitoring & Reporting
 
 - Zabbix monitoring via agents on all hosts
 - User reports generated to `/opt/ansible/users.txt`
 - Playbook execution logs in Semaphore
+- Scheduled playbook runs via Semaphore
 
 ## 🔄 Updates & Maintenance
 
