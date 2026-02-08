@@ -47,6 +47,65 @@ SSH_KEY=~/.ssh/mykey ./setup-ssh-key-on-remote-host.sh 192.168.1.100 ubuntu
 
 ---
 
+### deploy-zsh-setup.sh (v2.0)
+**Complete zsh environment deployment script.**
+
+**What it does:**
+- ✅ Installs zsh shell
+- ✅ Installs Oh My Zsh framework
+- ✅ Installs useful plugins (syntax-highlighting, autosuggestions)
+- ✅ Installs fzf (fuzzy finder)
+- ✅ Optionally installs NVM (Node Version Manager)
+- ✅ Optionally installs AWS CLI
+- ✅ Deploys improved .zshrc with professional aliases and functions
+- ✅ Backs up existing configuration
+- ✅ Changes default shell to zsh
+
+**Usage:**
+```bash
+# Basic usage (current user)
+sudo ./deploy-zsh-setup.sh
+
+# For specific user
+sudo ./deploy-zsh-setup.sh --user noble
+
+# With custom theme
+sudo ./deploy-zsh-setup.sh --theme agnoster
+
+# With AWS CLI
+sudo ./deploy-zsh-setup.sh --install-aws-cli
+
+# Minimal install (no fun packages)
+sudo ./deploy-zsh-setup.sh --minimal
+
+# Show help
+./deploy-zsh-setup.sh --help
+```
+
+**Command-line Options:**
+- `-h, --help` - Show help message
+- `-u, --user <username>` - Target user (default: current)
+- `-t, --theme <theme>` - Oh My Zsh theme (default: duellj)
+- `--skip-nvm` - Don't install NVM
+- `--install-aws-cli` - Install AWS CLI v2
+- `--minimal` - Skip fortune/cowsay/lolcat
+
+**Features:**
+- 10+ useful plugins pre-configured
+- Professional aliases for git, docker, ansible, kubectl
+- Useful functions (gcp, mkcd, extract, h)
+- Auto-completion for kubectl, terraform, aws
+- Enhanced history management
+- Color-coded output and logging
+- Automatic backup of existing .zshrc
+
+**Prerequisites:**
+- Root or sudo privileges
+- Internet connectivity
+- Ubuntu/Debian or RHEL-based system
+
+---
+
 ### zabbixdeploy.sh (v2.0)
 **Production-grade Zabbix agent installation script.**
 
@@ -111,11 +170,14 @@ ZABBIX_SERVER=192.168.1.50 sudo ./zabbixdeploy.sh
 
 ---
 
+---
+
 ## 🚀 Making Scripts Executable
 
 ```bash
 cd scripts/
 chmod +x setup-ssh-key-on-remote-host.sh
+chmod +x deploy-zsh-setup.sh
 chmod +x zabbixdeploy.sh
 ```
 
