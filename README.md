@@ -40,21 +40,6 @@ ansible-vault encrypt group_vars/all/vault.yml
 # 6. Run a playbook
 ansible-playbook playbook-update-no-reboot.yml
 ```
-
-## 📁 Project Structure
-
-```
-/opt/ansible/noble-semaphore/
-├── ansible.cfg                    # Ansible configuration
-├── requirements.yml               # Required Ansible collections
-├── inventory.template             # Template for your inventory
-├── inventory                      # Your actual inventory (NOT tracked)
-├── group_vars/
-│   └── all/
-│       ├── vars.yml              # Common variables
-│       ├── vault.yml             # Encrypted secrets (NOT tracked)
-│       └── vault.yml.example     # Template for vault
-├── templates/
 │   └── zabbix_agent2.conf.j2    # Zabbix agent config template
 ├── configfiles/
 │   └── debian-sshd-default.conf  # Fail2ban config
@@ -63,33 +48,43 @@ ansible-playbook playbook-update-no-reboot.yml
 
 ## 🔒 Security Setup
 
-### Creating Vault for Secrets
+### Vault Configuration (Zero Overhead)
 
-**IMPORTANT:** Never commit secrets to git! Use Ansible Vault.
+The `vault.yml` file is already configured with your credentials and is **ready to use immediately** - no encryption needed!
+
+**Current Setup:**
+- ✅ vault.yml contains your credentials (default Zabbix password)
+- ✅ Already excluded from git via .gitignore
+- ✅ Works with ALL playbooks - no `--ask-vault-pass` needed
+- ✅ **Zero overhead** - just run playbooks normally
 
 ```bash
-# Create vault file from example
-cp group_vars/all/vault.yml.example group_vars/all/vault.yml
-
-# Edit and add your actual credentials
-nano group_vars/all/vault.yml
-
-# Encrypt the file
-ansible-vault encrypt group_vars/all/vault.yml
-
-# To edit encrypted file later
-ansible-vault edit group_vars/all/vault.yml
-
-# Run playbooks with vault
-ansible-playbook playbook-name.yml --ask-vault-pass
+# Run playbooks directly - no extra flags needed
+ansible-playbook deploy_zabbix_agent2.yaml
+ansible-playbook playbook-update-no-reboot.yml
 ```
 
-### What's Protected
+### Optional: Encrypt Vault (Only if needed)
+
+If you change the default passwords or want extra security:
+
+```bash
+# Encrypt vault.yml
+ansible-vault encrypt group_vars/all/vault.yml
+
+# Then run playbooks with:
+ansible-playbook playbook-name.yml --ask-vault-pass
+
+# Edit encrypted vault:
+ansible-vault edit group_vars/all/vault.yml
+```
+
+### What's Protected from Git
 
 The following files are automatically excluded from git:
 - `inventory` - Contains real IPs and hostnames
 - `users.txt` - Contains user information
-- `**/vault.yml` - Encrypted credentials
+- `**/vault.yml` - Your credentials (encrypted or not)
 - `semaphore/` - Semaphore runtime data
 
 ## 📚 Available Playbooks
@@ -148,7 +143,7 @@ Deploy Zabbix Agent 2 for monitoring.
 - Credentials from `group_vars/all/vault.yml`
 
 ```bash
-ansible-playbook deploy_zabbix_agent2.yaml --ask-vault-pass
+ansible-playbook deploy_zabbix_agent2.yaml
 ```
 
 #### `tailscale-net-zabbix-agent-playbook.yml`
