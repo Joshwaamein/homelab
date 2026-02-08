@@ -1,85 +1,101 @@
 ---
 - name: Upgrade zabbix-agent to zabbix-agent2
-  hosts: localhost
+  hosts: ubuntu_vms, pbs, hosts
   become: true
+  gather_facts: true
   ignore_unreachable: true
-  vars:
-    zabbix_server_ip: "100.85.45.123"
-    zabbix_version: "7.0"
 
   tasks:
-    - name: Stop old zabbix-agent
+    - name: Print hostname
+      ansible.builtin.debug:
+        msg: "Configuring Zabbix Agent 2 on {{ ansible_hostname }}"
+
+    - name: Stop old zabbix-agent (if exists)
       ansible.builtin.systemd:
         name: zabbix-agent
         state: stopped
         enabled: false
-
-    - name: Disable old zabbix-agent
-      ansible.builtin.systemd_service:
-        name: zabbix-agent
-        enabled: false
-        masked: no
+      failed_when: false
+      when: ansible_os_family == "Debian"
 
     - name: Add Zabbix repository
       ansible.builtin.get_url:
         url: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ zabbix_version }}+ubuntu{{ ansible_distribution_version }}_all.deb"
         dest: /tmp/zabbix-release.deb
+        mode: '0644'
       register: download_repo
+      when: ansible_os_family == "Debian"
 
-    - name: Install repository package
+    - name: Install Zabbix repository package
       ansible.builtin.apt:
         deb: /tmp/zabbix-release.deb
-      when: download_repo.changed
+        state: present
+      when: ansible_os_family == "Debian" and download_repo.changed
 
-    - name: Update package cache
+    - name: Update apt cache
       ansible.builtin.apt:
         update_cache: yes
+      when: ansible_os_family == "Debian"
 
     - name: Install zabbix-agent2
       ansible.builtin.apt:
         name: zabbix-agent2
-        state: latest
-        force: yes
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
 
-    - name: Configure zabbix_agent2
+    - name: Deploy zabbix_agent2 configuration from template
       ansible.builtin.template:
-        src: zabbix_agent2.conf.j2
+        src: templates/zabbix_agent2.conf.j2
         dest: /etc/zabbix/zabbix_agent2.conf
         owner: zabbix
         group: zabbix
-        mode: 0644
-      notify: Restart zabbix-agent2
-
-    - name: Configure zabbix_agent2.conf with direct edits
-      ansible.builtin.replace:
-        path: /etc/zabbix/zabbix_agent2.conf
-        regexp: '^(Server|ServerActive|Hostname)=.*'
-        replace: "Server={{ zabbix_server_ip }}\nServerActive={{ zabbix_server_ip }}\nHostname={{ ansible_hostname }}"
-        after: '^#.*zabbix agent configuration file'
+        mode: '0644'
         backup: yes
+      when: ansible_os_family == "Debian"
       notify: Restart zabbix-agent2
 
-    - name: Get host IP addresses
-      ansible.builtin.set_fact:
-        host_ips: "{{ ansible_all_ipv4_addresses }}"
+    - name: Ensure zabbix-agent2 is enabled and started
+      ansible.builtin.systemd:
+        name: zabbix-agent2
+        state: started
+        enabled: true
+      when: ansible_os_family == "Debian"
 
-    - name: Update Zabbix server configuration
+    - name: Get Tailscale IP addresses
+      ansible.builtin.set_fact:
+        tailscale_ips: "{{ ansible_all_ipv4_addresses | select('match', '^100\\.') | list }}"
+
+    - name: Print Tailscale IPs found
+      ansible.builtin.debug:
+        msg: "Tailscale IPs: {{ tailscale_ips }}"
+      when: tailscale_ips | length > 0
+
+    - name: Update Zabbix server host configuration
       community.zabbix.zabbix_host:
         server_url: "http://{{ zabbix_server_ip }}"
-        login_user: Admin
-        login_password: zabbix
+        login_user: "{{ zabbix_admin_user }}"
+        login_password: "{{ zabbix_admin_password }}"
         host_name: "{{ ansible_hostname }}"
         host_groups:
           - Linux servers
         link_templates:
-          - "Linux by Zabbix agent2 active"
+          - "Linux by Zabbix agent active"
         interfaces:
           - type: 1
             main: 1
-            ip: "{{ item }}"
+            ip: "{{ tailscale_ips[0] }}"
             port: 10050
-      loop: "{{ host_ips }}"
-      when: "'100.64.0.0/10' in item or '10.0.0.0/8' in item"
+      when: 
+        - tailscale_ips | length > 0
+        - zabbix_admin_user is defined
+        - zabbix_admin_password is defined
+      delegate_to: localhost
+      run_once: false
+
+    - name: Print completion message
+      ansible.builtin.debug:
+        msg: "Zabbix Agent 2 installed and configured on {{ ansible_hostname }}"
 
   handlers:
     - name: Restart zabbix-agent2
@@ -87,43 +103,3 @@
         name: zabbix-agent2
         state: restarted
         enabled: true
-
-
-
-#---
-#- name: Upgrade zabbix-agent to zabbix-agent2
-#  hosts: ubuntu_vms
-#  become: true
-#  ignore_unreachable: true
-#  
-#tasks:
-#
-#
-#ssh to host
-#systemctl disable zabbix-agent
-#systemctl stop zabbix-agent
-#
-#if server is 24.04:
-## wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.0+ubuntu24.04_all.deb
-## dpkg -i zabbix-release_latest_7.0+ubuntu24.04_all.deb
-## apt update
-## apt install zabbix-agent2
-#
-#if server is 22.04:
-## wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.0+ubuntu22.04_all.deb
-## dpkg -i zabbix-release_latest_7.0+ubuntu22.04_all.deb
-## apt update
-#
-#echo Y | pt install zabbix_agent2 -y #to overwrite with new maintainers file
-#
-#sed /etc/zabbix/zabbix_agent2.conf server=zabbix_server_ip, serveractive=zabbix_server_ip, hostname=$hostname
-#
-#systemctl enable zabbix_agent2 
-#systemctl restart zabbix_agent2 
-#
-## configure zabbix server
-#
-#for each serv find the tailscale or local network adapter ip and match it up to the zabbix hosts 
-#for each matched host update the hostname in zabbix to the servers hostname
-#for each matched host update the template in zabbix to remove linux by zabix agent to linux active by zabbix agent2
-#

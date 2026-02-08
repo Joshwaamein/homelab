@@ -1,0 +1,19 @@
+---
+# Common variables for all hosts
+
+# Zabbix Configuration
+zabbix_server_ip: "100.85.45.123"
+zabbix_version: "7.0"
+
+# Timezone Configuration
+timezone: "Europe/London"
+
+# SSH Configuration
+ssh_permit_root_login: "prohibit-password"
+ssh_password_authentication: false
+
+# Fail2ban Configuration
+fail2ban_enabled: true
+
+# System Updates
+update_cache_valid_time: 3600

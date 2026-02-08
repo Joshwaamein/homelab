@@ -7,9 +7,9 @@
   ignore_unreachable: true # This makes the play continue even if hosts are initially unreachable
 
   tasks:
-    - name: Set timezone to Europe/London using community.general.timezone module
+    - name: Set timezone using community.general.timezone module
       community.general.timezone:
-        name: Europe/London
+        name: "{{ timezone }}"
       # Corrected 'when' condition: Check if 'ansible_service_mgr' is defined BEFORE comparing its value.
       # This prevents failure on hosts where facts couldn't be gathered.
       when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
