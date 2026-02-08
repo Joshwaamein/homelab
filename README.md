@@ -13,7 +13,8 @@ homelab/
 │       └── configure-semaphore.py  # Semaphore auto-config
 ├── scripts/             # Utility scripts for setup and deployment
 │   ├── setup-ssh-key-on-remote-host.sh  # SSH key automation
-│   └── zabbixdeploy.sh  # Zabbix deployment
+│   ├── deploy-zsh-setup.sh              # Zsh environment setup
+│   └── zabbixdeploy.sh                  # Zabbix deployment
 ├── semaphore/           # Semaphore UI configuration (not tracked)
 └── README.md           # This file
 ```
