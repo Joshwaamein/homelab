@@ -1,6 +1,10 @@
 # Sensitive inventory files with real IPs and hostnames
 ansible/noble-semaphore/inventory
 ansible/noble-semaphore/users.txt
+ansible/users.txt
+
+# Ansible Vault files (encrypted credentials)
+**/vault.yml
 
 # Exclude entire semaphore directory (contains personal configs, VS Code server files, ansible roles)
 semaphore/

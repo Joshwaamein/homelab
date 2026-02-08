@@ -1,3 +1,4 @@
+---
 - name: Update, upgrade, and reboot Ubuntu and Debian systems
   hosts: ubuntu_vms, pbs, hosts
   gather_facts: true

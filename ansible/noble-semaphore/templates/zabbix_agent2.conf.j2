@@ -1,0 +1,35 @@
+# Zabbix Agent 2 Configuration File
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+# Server IP address
+Server={{ zabbix_server_ip }}
+
+# Server Active (for active checks)
+ServerActive={{ zabbix_server_ip }}
+
+# Hostname - must match the name in Zabbix server
+Hostname={{ ansible_hostname }}
+
+# Listen port for trapper
+ListenPort=10050
+
+# Source IP address for outgoing connections
+# SourceIP=
+
+# Log file location
+LogFile=/var/log/zabbix/zabbix_agent2.log
+
+# Log file size in MB (0 - disable automatic log rotation)
+LogFileSize=10
+
+# Debug level (0-5)
+DebugLevel=3
+
+# Include additional config files
+Include=/etc/zabbix/zabbix_agent2.d/*.conf
+
+# Allow remote commands
+# EnableRemoteCommands=0
+
+# Timeout for agent operations
+Timeout=10

@@ -1,38 +1,67 @@
 ---
-- name: Get usernames from /etc/passwd on all servers
+- name: Get usernames from all servers
   hosts: ubuntu_vms, pbs, hosts
   gather_facts: true
-  ignore_errors: true
+  become: true
+  ignore_unreachable: true
+  
   tasks:
     - name: Print hostname
-      debug:
-        msg: "Hostname is {{ ansible_hostname }}"
+      ansible.builtin.debug:
+        msg: "Gathering users from {{ ansible_hostname }}"
 
-    - name: Extract usernames
-      shell: "cut -d: -f1 /etc/passwd"
-      register: user_list
+    - name: Get all users using getent
+      ansible.builtin.getent:
+        database: passwd
+      register: user_database
 
-    - name: Store targeted hosts list on localhost
-      set_fact:
-        processed_hosts: "{{ ansible_play_hosts }}"
-      delegate_to: localhost
-      delegate_facts: true
-      run_once: true
+    - name: Store user list for this host
+      ansible.builtin.set_fact:
+        host_users: "{{ user_database.ansible_facts.getent_passwd.keys() | list }}"
 
-- name: Collect and save all usernames to one file
+- name: Collect and save all usernames to file
   hosts: localhost
   connection: local
   gather_facts: yes
+  
   tasks:
-    - name: Write all usernames to file
-      copy:
-        content: |
-          {% for host in hostvars['localhost'].processed_hosts %}
-          === {{ host }} ===
-          {% if hostvars[host].user_list is defined and hostvars[host].user_list.stdout is defined %}
-          {{ hostvars[host].user_list.stdout }}
+    - name: Create output directory if it doesn't exist
+      ansible.builtin.file:
+        path: /opt/ansible
+        state: directory
+        mode: '0755'
+
+    - name: Generate user report content
+      ansible.builtin.set_fact:
+        user_report: |
+          # User Report Generated: {{ ansible_date_time.iso8601 }}
+          # This file contains sensitive information - DO NOT COMMIT TO GIT
+          
+          {% for host in groups['ubuntu_vms'] + groups['pbs'] + groups['hosts'] %}
+          {% if hostvars[host].host_users is defined %}
+          ======================================
+          Host: {{ host }}
+          Hostname: {{ hostvars[host].ansible_hostname | default('N/A') }}
+          ======================================
+          {% for user in hostvars[host].host_users | sort %}
+          {{ user }}
+          {% endfor %}
+          
           {% else %}
-          (No user list available)
+          ======================================
+          Host: {{ host }}
+          Status: Unreachable or no data
+          ======================================
+          
           {% endif %}
           {% endfor %}
+
+    - name: Write all usernames to file
+      ansible.builtin.copy:
+        content: "{{ user_report }}"
         dest: /opt/ansible/users.txt
+        mode: '0600'
+
+    - name: Display report location
+      ansible.builtin.debug:
+        msg: "User report saved to /opt/ansible/users.txt (This file is excluded from git)"

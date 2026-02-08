@@ -1,14 +1,20 @@
 ---
 - name: Configure UFW firewall rules for all hosts
-  hosts: ubuntu_vms, unifi, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, localhost
+  hosts: ubuntu_vms, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, pihole, ansible
   become: yes
+  gather_facts: true
   ignore_unreachable: true
+  
   tasks:
+    - name: Print hostname
+      ansible.builtin.debug:
+        msg: "Configuring UFW on {{ ansible_hostname }}"
 
-    - name: Ensure UFW is installed
+    - name: Ensure UFW is installed (Debian/Ubuntu)
       ansible.builtin.apt:
         name: ufw
         state: present
+        update_cache: yes
       when: ansible_os_family == "Debian"
 
     - name: Ensure UFW is installed (RedHat/Alma)
@@ -19,174 +25,203 @@
 
     - name: Configure UFW for non-Proxmox hosts
       block:
+        - name: Check current UFW status
+          ansible.builtin.command: ufw status
+          register: ufw_status
+          changed_when: false
+          failed_when: false
 
-        - name: Initialize UFW
-          block:
-            - community.general.ufw:
-                state: enabled
-            - community.general.ufw:
-                default: deny
-                direction: incoming
-
-        - name: Apply base firewall rules
+        - name: CRITICAL - Ensure SSH is allowed BEFORE enabling UFW
           community.general.ufw:
             rule: allow
-            port: "{{ item }}"
-          loop:
-            - 22
-            - 10050
-            - 39098
-            - 44840
+            port: '22'
+            proto: tcp
+            comment: 'SSH - CRITICAL for remote access'
+          register: ssh_rule
 
-        - name: Configure evernode rules
+        - name: Verify SSH rule was added
+          ansible.builtin.assert:
+            that:
+              - ssh_rule is succeeded
+            fail_msg: "CRITICAL: Failed to add SSH rule. Aborting to prevent lockout!"
+            success_msg: "SSH rule confirmed - safe to proceed"
+
+        - name: Set UFW default policies
+          community.general.ufw:
+            direction: "{{ item.direction }}"
+            policy: "{{ item.policy }}"
+          loop:
+            - { direction: 'incoming', policy: 'deny' }
+            - { direction: 'outgoing', policy: 'allow' }
+            - { direction: 'routed', policy: 'deny' }
+
+        - name: Apply base firewall rules (SSH, Zabbix, Tailscale)
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "{{ item.comment }}"
+          loop:
+            - { port: '22', proto: 'tcp', comment: 'SSH' }
+            - { port: '10050', proto: 'tcp', comment: 'Zabbix Agent' }
+            - { port: '39098', proto: 'udp', comment: 'Tailscale' }
+            - { port: '44840', proto: 'udp', comment: 'Tailscale DERP' }
+
+        - name: Configure Evernode rules
           community.general.ufw:
             rule: allow
             port: "{{ item.port }}"
             proto: "{{ item.proto }}"
+            comment: "Evernode - {{ item.comment }}"
           loop:
-            - { port: 80, proto: tcp }
-            - { port: 443, proto: tcp }
-            - { port: 26201, proto: tcp }
-            - { port: 26202, proto: tcp }
-            - { port: 26203, proto: tcp }
-            - { port: 26204, proto: tcp }
-            - { port: 36525, proto: tcp }
-            - { port: 36526, proto: tcp }
-            - { port: 36527, proto: tcp }
-            - { port: 36528, proto: tcp }
-            - { port: 36529, proto: tcp }
-            - { port: 36530, proto: tcp }
-            - { port: 36531, proto: tcp }
-            - { port: 39064, proto: udp }
-            - { port: 39065, proto: udp }
-            - { port: 39066, proto: udp }
-            - { port: 39067, proto: udp }
-            - { port: 39068, proto: udp }
-            - { port: 39069, proto: udp }
-            - { port: 39070, proto: udp }
-            - { port: 22861, proto: tcp }
-            - { port: 22862, proto: tcp }
-            - { port: 22863, proto: tcp }
-            - { port: 22864, proto: tcp }
-            - { port: 22, proto: tcp }
-          when: inventory_hostname in groups.evernode
+            - { port: '80', proto: 'tcp', comment: 'HTTP' }
+            - { port: '443', proto: 'tcp', comment: 'HTTPS' }
+            - { port: '26201', proto: 'tcp', comment: 'XRPL WS' }
+            - { port: '26202', proto: 'tcp', comment: 'XRPL WS Public' }
+            - { port: '26203', proto: 'tcp', comment: 'Hook API' }
+            - { port: '26204', proto: 'tcp', comment: 'Sashimono WS' }
+            - { port: '36525-36531', proto: 'tcp', comment: 'Contract ports' }
+            - { port: '39064-39070', proto: 'udp', comment: 'Contract UDP' }
+            - { port: '22861-22864', proto: 'tcp', comment: 'Additional contracts' }
+          when: "'evernode' in group_names"
 
-        - name: Configure Unifi rules
+        - name: Configure UniFi rules
           community.general.ufw:
             rule: allow
-            src: "{{ item.src }}"
-            port: "{{ item.port }}"
+            from_ip: "{{ item.src }}"
+            to_port: "{{ item.port }}"
             proto: "{{ item.proto }}"
+            comment: "UniFi - {{ item.comment }}"
           loop:
-            - { src: '100.0.0.0/8', port: 8080, proto: tcp }
-            - { src: '100.0.0.0/8', port: 8443, proto: tcp }
-            - { src: '100.0.0.0/8', port: 3478, proto: udp }
-            - { src: '100.0.0.0/8', port: 10001, proto: udp }
-            - { src: '100.0.0.0/8', port: 1900, proto: udp }
-            - { src: '192.168.0.0/16', port: 8080, proto: tcp }
-            - { src: '192.168.0.0/16', port: 8443, proto: tcp }
-            - { src: '192.168.0.0/16', port: 3478, proto: udp }
-            - { src: '192.168.0.0/16', port: 10001, proto: udp }
-            - { src: '192.168.0.0/16', port: 1900, proto: udp }
-          when: inventory_hostname in groups.unifi
+            - { src: '100.0.0.0/8', port: '8080', proto: 'tcp', comment: 'Device inform' }
+            - { src: '100.0.0.0/8', port: '8443', proto: 'tcp', comment: 'Web UI' }
+            - { src: '100.0.0.0/8', port: '3478', proto: 'udp', comment: 'STUN' }
+            - { src: '100.0.0.0/8', port: '10001', proto: 'udp', comment: 'Discovery' }
+            - { src: '100.0.0.0/8', port: '1900', proto: 'udp', comment: 'L2 Discovery' }
+            - { src: '192.168.0.0/16', port: '8080', proto: 'tcp', comment: 'Device inform local' }
+            - { src: '192.168.0.0/16', port: '8443', proto: 'tcp', comment: 'Web UI local' }
+            - { src: '192.168.0.0/16', port: '3478', proto: 'udp', comment: 'STUN local' }
+            - { src: '192.168.0.0/16', port: '10001', proto: 'udp', comment: 'Discovery local' }
+            - { src: '192.168.0.0/16', port: '1900', proto: 'udp', comment: 'L2 Discovery local' }
+          when: "'unifi' in group_names"
 
         - name: Configure Pi-hole rules
           community.general.ufw:
             rule: allow
-            port: "{{ item }}"
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Pi-hole - {{ item.comment }}"
           loop:
-            - 22
-            - 53
-            - 67
-            - 547
-            - 80
-            - 443
-            - 123
-          when: inventory_hostname in groups.pihole
+            - { port: '53', proto: 'tcp', comment: 'DNS TCP' }
+            - { port: '53', proto: 'udp', comment: 'DNS UDP' }
+            - { port: '67', proto: 'udp', comment: 'DHCP' }
+            - { port: '547', proto: 'udp', comment: 'DHCPv6' }
+            - { port: '80', proto: 'tcp', comment: 'Web Interface' }
+            - { port: '443', proto: 'tcp', comment: 'Web Interface HTTPS' }
+          when: "'pihole' in group_names"
 
-        - name: Configure servarr rules
+        - name: Configure Servarrr rules
           community.general.ufw:
             rule: "{{ item.rule | default('allow') }}"
             port: "{{ item.port }}"
             proto: "{{ item.proto | default('tcp') }}"
+            comment: "Servarrr - {{ item.comment }}"
           loop:
-            - { port: 22, proto: tcp }
-            - { port: 8080, proto: tcp }
-            - { port: 8787, proto: tcp }
-            - { port: 8191, proto: tcp }
-            - { port: 6767, proto: tcp }
-            - { port: 9982, proto: tcp }
-            - { port: 8686, proto: tcp }
-            - { port: 9000, proto: tcp }
-            - { port: 8096, proto: tcp }
-            - { port: 7878, proto: tcp }
-            - { port: 8989, proto: tcp }
-            - { port: 9696, proto: tcp }
-            - { port: 9981, proto: tcp }
-            - { port: 10050, proto: tcp }
-            - { port: 8388, proto: tcp }
-            - { port: 8888, proto: tcp }
-            - { port: 9117, proto: tcp }
-            - { port: 137, proto: udp, rule: deny }
-            - { port: 138, proto: udp, rule: deny }
-            - { port: 139, proto: tcp, rule: deny }
-            - { port: 445, proto: tcp, rule: deny }
-          when: inventory_hostname in groups.servarr
+            - { port: '8080', comment: 'SABnzbd' }
+            - { port: '8787', comment: 'Readarr' }
+            - { port: '8191', comment: 'FlareSolverr' }
+            - { port: '6767', comment: 'Bazarr' }
+            - { port: '9982', comment: 'TVHeadend' }
+            - { port: '8686', comment: 'Lidarr' }
+            - { port: '9000', comment: 'Portainer' }
+            - { port: '8096', comment: 'Jellyfin' }
+            - { port: '7878', comment: 'Radarr' }
+            - { port: '8989', comment: 'Sonarr' }
+            - { port: '9696', comment: 'Prowlarr' }
+            - { port: '9981', comment: 'TVHeadend streams' }
+            - { port: '8388', comment: 'Overseerr' }
+            - { port: '8888', comment: 'Requestrr' }
+            - { port: '9117', comment: 'Jackett' }
+            - { port: '137', proto: 'udp', rule: 'deny', comment: 'Block NetBIOS' }
+            - { port: '138', proto: 'udp', rule: 'deny', comment: 'Block NetBIOS' }
+            - { port: '139', rule: 'deny', comment: 'Block SMB' }
+            - { port: '445', rule: 'deny', comment: 'Block SMB' }
+          when: "'servarr' in group_names or 'servarrr' in group_names"
 
-        - name: Configure Ansible rules
+        - name: Configure Ansible host rules
           community.general.ufw:
             rule: allow
             port: "{{ item }}"
+            comment: "Ansible - Management"
           loop:
-            - 22
-            - 3000
-          when: inventory_hostname in groups.ansible
+            - '3000'
+          when: "'ansible' in group_names"
 
         - name: Configure pve_data rules
           community.general.ufw:
             rule: allow
-            port: "{{ item }}"
+            port: "{{ item.port }}"
+            comment: "Data services - {{ item.comment }}"
           loop:
-            - 22
-            - 3000
-            - 8086
-            - 5432
-          when: inventory_hostname in groups.pve_data
+            - { port: '3000', comment: 'Grafana' }
+            - { port: '8086', comment: 'InfluxDB' }
+            - { port: '5432', comment: 'PostgreSQL' }
+          when: "'pve_data' in group_names"
 
-        - name: Configure xahau rules
+        - name: Configure Xahau rules
           community.general.ufw:
             rule: allow
             port: "{{ item }}"
+            comment: "Xahau"
           loop:
-            - 22
-            - 80
-            - 443
-            - 21337
-            - 10050
-          when: inventory_hostname in groups.xahau
+            - '80'
+            - '443'
+            - '21337'
+          when: "'xahau' in group_names"
 
-        - name: Configure pi4 rules
+        - name: Configure Pi4 rules
           community.general.ufw:
             rule: allow
-            port: "{{ item }}"
-          loop:
-            - 22
-            - 5000
-          when: inventory_hostname in groups.pi4
+            port: '5000'
+            comment: "Pi4 services"
+          when: "'pi4' in group_names"
 
         - name: Configure ubuntu_docker rules
           community.general.ufw:
             rule: allow
             port: "{{ item }}"
+            comment: "Docker services"
           loop:
-            - 22
-            - 9000
-            - 9443
-            - 8080
-            - 8082
-          when: inventory_hostname in groups.ubuntu_docker
+            - '9000'
+            - '9443'
+            - '8080'
+            - '8082'
+          when: "'ubuntu_docker' in group_names"
 
-    - name: Reload UFW configuration
-      community.general.ufw:
-        state: reloaded
-      when: "'proxmox' not in group_names and 'pbs' not in group_names"
+        - name: Enable UFW with confirmation
+          community.general.ufw:
+            state: enabled
+          register: ufw_enabled
+
+        - name: Verify UFW is active
+          ansible.builtin.command: ufw status verbose
+          register: ufw_final_status
+          changed_when: false
+
+        - name: Display final UFW status
+          ansible.builtin.debug:
+            var: ufw_final_status.stdout_lines
+
+      rescue:
+        - name: EMERGENCY - Disable UFW on error
+          community.general.ufw:
+            state: disabled
+          ignore_errors: yes
+
+        - name: Alert about UFW failure
+          ansible.builtin.fail:
+            msg: "UFW configuration failed! Firewall has been disabled to prevent lockout."
+
+      when: 
+        - "'proxmox' not in group_names"
+        - "'pbs' not in group_names"

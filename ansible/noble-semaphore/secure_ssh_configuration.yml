@@ -1,35 +1,95 @@
 ---
-- name: Secure SSH configuration (no software install)
+- name: Secure SSH configuration with safety checks
   hosts: all
   become: true
+  gather_facts: true
   ignore_unreachable: true
+  
   tasks:
+    - name: Skip Windows hosts
+      ansible.builtin.meta: end_host
+      when: ansible_facts['os_family'] == 'Windows'
+
     - name: Print hostname
-      debug:
-        msg: "Hostname is {{ ansible_hostname }}"
-      when: ansible_facts['os_family'] != 'Windows'
-    
+      ansible.builtin.debug:
+        msg: "Securing SSH on {{ ansible_hostname }}"
+
+    - name: Backup current sshd_config
+      ansible.builtin.copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.backup.{{ ansible_date_time.epoch }}
+        remote_src: yes
+        mode: '0600'
+      changed_when: false
+
+    - name: Check if authorized_keys file exists for current user
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+      register: authorized_keys_file
+      when: ansible_env.HOME is defined
+
+    - name: Check if authorized_keys exists for root
+      ansible.builtin.stat:
+        path: /root/.ssh/authorized_keys
+      register: root_authorized_keys
+
+    - name: Verify at least one user has SSH keys configured
+      ansible.builtin.assert:
+        that:
+          - authorized_keys_file.stat.exists | default(false) or root_authorized_keys.stat.exists
+        fail_msg: |
+          CRITICAL: No SSH keys found! 
+          Cannot disable password authentication without SSH keys.
+          Please add SSH keys first using: ssh-copy-id user@host
+        success_msg: "SSH keys verified - safe to disable password authentication"
+      when: ssh_password_authentication == false
+
     - name: Configure PermitRootLogin
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^PermitRootLogin'
-        line: 'PermitRootLogin prohibit-password'
+        regexp: '^#?\s*PermitRootLogin'
+        line: 'PermitRootLogin {{ ssh_permit_root_login }}'
         state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
       notify: restart ssh
-      when: ansible_facts['os_family'] != 'Windows'
-    
+
     - name: Configure PasswordAuthentication
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^PasswordAuthentication'
-        line: 'PasswordAuthentication no'
+        regexp: '^#?\s*PasswordAuthentication'
+        line: 'PasswordAuthentication {{ "yes" if ssh_password_authentication else "no" }}'
         state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
       notify: restart ssh
-      when: ansible_facts['os_family'] != 'Windows'
-      
+      when: ssh_password_authentication is defined
+
+    - name: Ensure PubkeyAuthentication is enabled
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*PubkeyAuthentication'
+        line: 'PubkeyAuthentication yes'
+        state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: restart ssh
+
+    - name: Test SSH configuration syntax
+      ansible.builtin.command: /usr/sbin/sshd -t
+      changed_when: false
+      register: sshd_test
+
+    - name: Print SSH configuration status
+      ansible.builtin.debug:
+        msg: "SSH configuration updated successfully on {{ ansible_hostname }}"
+
   handlers:
     - name: restart ssh
-      service:
-        name: "{{ 'ssh' if ansible_service_mgr == 'systemd' else 'sshd' }}"
+      ansible.builtin.service:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
         state: restarted
-      when: ansible_facts['os_family'] != 'Windows'
+      # Add a delay to ensure we don't lose connection
+      async: 1
+      poll: 0
+      ignore_errors: true
