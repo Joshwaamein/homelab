@@ -55,21 +55,21 @@ ORDER BY hour DESC;
 -- Latest network statistics
 CREATE OR REPLACE VIEW latest_network_stats AS
 SELECT
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'ping_response_time') as current_ping_ms,
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'ping_response_time' LIMIT 1) as current_ping_ms,
   (SELECT AVG(value) FROM pi_environment_metrics 
    WHERE metric = 'ping_response_time' AND value > 0 AND timestamp > NOW() - INTERVAL '24 hours') as avg_ping_24h,
   (SELECT COUNT(*) FILTER (WHERE value = -1)::float / COUNT(*)::float * 100
    FROM pi_environment_metrics WHERE metric = 'ping_response_time' AND timestamp > NOW() - INTERVAL '24 hours') as packet_loss_24h,
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'internet_download_speed_mbps') as download_mbps,
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'internet_upload_speed_mbps') as upload_mbps;
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'internet_download_speed_mbps' LIMIT 1) as download_mbps,
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'internet_upload_speed_mbps' LIMIT 1) as upload_mbps;
 
 -- Environmental statistics
 CREATE OR REPLACE VIEW latest_environmental_stats AS
 SELECT
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'room_temperature_celsius') as current_temp,
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'room_humidity_percent') as current_humidity,
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'forecast_temperature_celsius') as forecast_temp,
-  (SELECT value FROM latest_pi_metrics WHERE metric = 'forecast_humidity_percent') as forecast_humidity,
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'room_temperature_celsius' LIMIT 1) as current_temp,
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'room_humidity_percent' LIMIT 1) as current_humidity,
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'forecast_temperature_celsius' LIMIT 1) as forecast_temp,
+  (SELECT value FROM latest_pi_metrics WHERE metric = 'forecast_humidity_percent' LIMIT 1) as forecast_humidity,
   (SELECT AVG(value) FROM pi_environment_metrics 
    WHERE metric = 'room_temperature_celsius' AND timestamp > NOW() - INTERVAL '24 hours') as avg_temp_24h,
   (SELECT AVG(value) FROM pi_environment_metrics
