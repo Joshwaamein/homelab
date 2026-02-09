@@ -229,7 +229,7 @@
         {
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT comfort_level as value FROM pi_comfort_index ORDER BY timestamp DESC LIMIT 1",
+          "rawSql": "SELECT NOW() as time, comfort_level as value FROM pi_comfort_index ORDER BY timestamp DESC LIMIT 1",
           "refId": "A"
         }
       ],
