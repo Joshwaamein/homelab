@@ -48,9 +48,19 @@ A comprehensive monitoring and data collection system for tracking cryptocurrenc
    ```
    **Important**: Configure your API keys, database credentials, and account addresses in `.env`
 
-3. **Install Python dependencies:**
+3. **Install system dependencies:**
    ```bash
-   pip install -r requirements.txt
+   # On Debian/Ubuntu systems
+   sudo apt install -y python3-dotenv python3-psycopg2 python3-requests
+   ```
+
+4. **Install additional Python dependencies:**
+   ```bash
+   # If using pip (in virtual environment or with --break-system-packages)
+   pip3 install -r requirements.txt
+   
+   # OR install remaining packages via apt (recommended for Debian/Ubuntu)
+   sudo apt install -y python3-xrpl python3-web3 python3-speedtest-cli python3-ping3 python3-websockets
    ```
 
 4. **Run the setup script:**
@@ -336,9 +346,29 @@ ERROR: database "asset_balances" already exists
 
 ### Import Errors
 ```
+ModuleNotFoundError: No module named 'dotenv'
 ModuleNotFoundError: No module named 'xrpl'
 ```
-**Solution:** Install dependencies: `pip install -r requirements.txt`
+**Solution:** 
+
+For **Debian/Ubuntu systems** with externally-managed Python:
+```bash
+# Install core dependencies
+sudo apt install -y python3-dotenv python3-psycopg2 python3-requests
+
+# Install blockchain libraries (if available)
+pip3 install xrpl-py xahau-py web3 pycoingecko --break-system-packages
+
+# Or use a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+For systems allowing pip:
+```bash
+pip3 install -r requirements.txt
+```
 
 ### Test Script Failures
 Run the test script to diagnose issues:
