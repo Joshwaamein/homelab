@@ -20,12 +20,12 @@
   "graphTooltip": 1,
   "id": null,
   "links": [],
-  "liveNow": false,
+  "liveNow": true,
   "panels": [
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -59,8 +59,7 @@
             ]
           },
           "unit": "celsius"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 8,
@@ -75,53 +74,26 @@
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "text": {}
+        "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
-          "group": [],
-          "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT current_temp as \"Temperature\" FROM latest_environmental_stats",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "rawSql": "SELECT current_temp as value FROM latest_environmental_stats",
+          "refId": "A"
         }
       ],
-      "title": "Room Temperature",
+      "title": "\ud83c\udf21\ufe0f Room Temperature",
       "type": "gauge"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -159,8 +131,7 @@
             ]
           },
           "unit": "humidity"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 8,
@@ -175,32 +146,26 @@
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT current_humidity as \"Humidity\" FROM latest_environmental_stats",
+          "rawSql": "SELECT current_humidity as value FROM latest_environmental_stats",
           "refId": "A"
         }
       ],
-      "title": "Room Humidity",
+      "title": "\ud83d\udca7 Room Humidity",
       "type": "gauge"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -213,17 +178,17 @@
                 "Optimal": {
                   "color": "green",
                   "index": 0,
-                  "text": "😊 Optimal"
+                  "text": "\ud83d\ude0a Optimal"
                 },
                 "Comfortable": {
                   "color": "yellow",
                   "index": 1,
-                  "text": "🙂 Comfortable"
+                  "text": "\ud83d\ude42 Comfortable"
                 },
                 "Uncomfortable": {
                   "color": "red",
                   "index": 2,
-                  "text": "😰 Uncomfortable"
+                  "text": "\ud83d\ude30 Uncomfortable"
                 }
               },
               "type": "value"
@@ -238,8 +203,7 @@
               }
             ]
           }
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 8,
@@ -257,22 +221,15 @@
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
-        "text": {},
         "textMode": "value"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT comfort_level FROM pi_comfort_index ORDER BY timestamp DESC LIMIT 1",
+          "rawSql": "SELECT comfort_level as value FROM pi_comfort_index ORDER BY timestamp DESC LIMIT 1",
           "refId": "A"
         }
       ],
@@ -282,7 +239,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -294,30 +251,29 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "dark-green",
                 "value": null
               },
               {
-                "color": "orange",
-                "value": 20
-              },
-              {
-                "color": "yellow",
+                "color": "green",
                 "value": 50
               },
               {
-                "color": "green",
+                "color": "yellow",
                 "value": 100
               },
               {
-                "color": "semi-dark-green",
+                "color": "orange",
+                "value": 150
+              },
+              {
+                "color": "red",
                 "value": 200
               }
             ]
           },
           "unit": "ms"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 8,
@@ -332,33 +288,26 @@
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "text": {}
+        "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT current_ping_ms as \"Latency\" FROM latest_network_stats",
+          "rawSql": "SELECT COALESCE(current_ping_ms, 0) as value FROM latest_network_stats",
           "refId": "A"
         }
       ],
-      "title": "Network Latency",
+      "title": "\ud83d\udce1 Network Latency",
       "type": "gauge"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -476,23 +425,19 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  timestamp as time,\n  CASE \n    WHEN metric = 'room_temperature_celsius' THEN 'Room'\n    WHEN metric = 'forecast_temperature_celsius' THEN 'Forecast'\n  END as metric,\n  value\nFROM pi_environment_metrics\nWHERE metric IN ('room_temperature_celsius', 'forecast_temperature_celsius')\n  AND $__timeFilter(timestamp)\nORDER BY timestamp",
           "refId": "A"
         }
       ],
-      "title": "Temperature: Room vs Forecast",
+      "title": "\ud83d\udcc8 Temperature: Room vs Forecast",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -551,7 +496,10 @@
               {
                 "id": "custom.lineStyle",
                 "value": {
-                  "dash": [10, 10],
+                  "dash": [
+                    10,
+                    10
+                  ],
                   "fill": "dash"
                 }
               },
@@ -607,23 +555,19 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  timestamp as time,\n  CASE \n    WHEN metric = 'room_humidity_percent' THEN 'Room'\n    WHEN metric = 'forecast_humidity_percent' THEN 'Forecast'\n  END as metric,\n  value\nFROM pi_environment_metrics\nWHERE metric IN ('room_humidity_percent', 'forecast_humidity_percent')\n  AND $__timeFilter(timestamp)\nORDER BY timestamp",
           "refId": "A"
         }
       ],
-      "title": "Humidity: Room vs Forecast",
+      "title": "\ud83d\udcc8 Humidity: Room vs Forecast",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -679,8 +623,7 @@
             ]
           },
           "unit": "ms"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
         "h": 9,
@@ -708,23 +651,19 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  timestamp as time,\n  value as \"Ping (ms)\"\nFROM pi_environment_metrics\nWHERE metric = 'ping_response_time'\n  AND value > 0\n  AND $__timeFilter(timestamp)\nORDER BY timestamp",
+          "rawSql": "SELECT\n  timestamp as time,\n  value as value\nFROM pi_environment_metrics\nWHERE metric = 'ping_response_time'\n  AND value > 0\n  AND $__timeFilter(timestamp)\nORDER BY timestamp",
           "refId": "A"
         }
       ],
-      "title": "Network Latency to Ghost",
+      "title": "\ud83c\udf10 Network Latency",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -831,57 +770,53 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  timestamp as time,\n  CASE\n    WHEN metric = 'internet_download_speed_mbps' THEN 'Download'\n    WHEN metric = 'internet_upload_speed_mbps' THEN 'Upload'\n  END as metric,\n  value\nFROM pi_environment_metrics\nWHERE metric IN ('internet_download_speed_mbps', 'internet_upload_speed_mbps')\n  AND $__timeFilter(timestamp)\nORDER BY timestamp",
           "refId": "A"
         }
       ],
-      "title": "Internet Speed Test Results",
+      "title": "\ud83d\ude80 Internet Speed",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "yellow",
                 "value": 1
               },
               {
-                "color": "yellow",
+                "color": "orange",
                 "value": 5
               },
               {
-                "color": "green",
+                "color": "red",
                 "value": 10
               }
             ]
           },
           "unit": "percent"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 8,
         "x": 0,
         "y": 26
@@ -896,32 +831,25 @@
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
-        "text": {},
         "textMode": "value_and_name"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  timestamp as time,\n  COALESCE(packet_loss_pct, 0) as \"Packet Loss\"\nFROM pi_network_quality\nWHERE timestamp > NOW() - INTERVAL '24 hours'\nORDER BY timestamp DESC\nLIMIT 1",
+          "rawSql": "SELECT COALESCE(packet_loss_pct, 0) as \"Packet Loss\" FROM pi_network_quality WHERE timestamp > NOW() - INTERVAL '24 hours' ORDER BY timestamp DESC LIMIT 1",
           "refId": "A"
         }
       ],
-      "title": "Packet Loss (24h)",
+      "title": "\ud83d\udcc9 Packet Loss (24h)",
       "type": "stat"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -940,11 +868,10 @@
             ]
           },
           "unit": "Mbps"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 8,
         "x": 8,
         "y": 26
@@ -954,37 +881,30 @@
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "center",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": {
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
-        "text": {},
         "textMode": "value_and_name"
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT download_mbps as \"Download\", upload_mbps as \"Upload\" FROM latest_network_stats",
+          "rawSql": "SELECT COALESCE(download_mbps, 0) as \"Download\", COALESCE(upload_mbps, 0) as \"Upload\" FROM latest_network_stats",
           "refId": "A"
         }
       ],
-      "title": "Latest Speed Test",
+      "title": "\ud83d\udcca Latest Speed",
       "type": "stat"
     },
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
+        "uid": "grafana-postgresql-datasource-environment_metrics"
       },
       "fieldConfig": {
         "defaults": {
@@ -1020,11 +940,10 @@
             ]
           },
           "unit": "percent"
-        },
-        "overrides": []
+        }
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 8,
         "x": 16,
         "y": 26
@@ -1036,99 +955,51 @@
           "values": false,
           "calcs": [
             "lastNotNull"
-          ],
-          "fields": ""
+          ]
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "text": {}
+        "showThresholdMarkers": true
       },
-      "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "postgres",
-            "uid": "${DS_ENVIRONMENT_METRICS}"
-          },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT network_quality_score as \"Quality Score\" FROM pi_network_quality ORDER BY timestamp DESC LIMIT 1",
+          "rawSql": "SELECT COALESCE(network_quality_score, 0) as value FROM pi_network_quality ORDER BY timestamp DESC LIMIT 1",
           "refId": "A"
         }
       ],
-      "title": "Network Quality Score",
+      "title": "\u2b50 Network Quality",
       "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "postgres",
-        "uid": "${DS_ENVIRONMENT_METRICS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Memory (MB)",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 15,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "decmbytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 31
-      },
-      "id": 12,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "raspberry-pi",
+    "environment",
+    "network"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Pi Metrics - Enhanced",
+  "uid": "pi-metrics-enhanced",
+  "version": 1,
+  "weekStart": ""
+}
