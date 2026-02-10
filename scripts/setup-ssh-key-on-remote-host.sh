@@ -11,11 +11,12 @@
 # - Verification of SSH key before disabling password auth
 # - Dependency checking
 # - Color-coded output and logging
+# - Early detection of existing SSH keys
 #
 # Author: Homelab Automation
-# Version: 2.0
+# Version: 2.1
 
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
+set -uo pipefail  # Exit on undefined vars, pipe failures (but not on error to handle failures gracefully)
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,7 +32,7 @@ SSH_TIMEOUT=5
 
 # Script info
 SCRIPT_NAME=$(basename "$0")
-VERSION="2.0"
+VERSION="2.1"
 
 #==============================================================================
 # Helper Functions
@@ -162,6 +163,44 @@ generate_ssh_key() {
         log_error "Failed to generate SSH key"
         exit 1
     fi
+}
+
+check_existing_key_on_remote() {
+    log_step "Checking if SSH key already exists on remote host..."
+    
+    # First try with key-based auth (no password)
+    if ssh -i "$SSH_KEY" \
+        -o BatchMode=yes \
+        -o ConnectTimeout=$SSH_TIMEOUT \
+        -o StrictHostKeyChecking=accept-new \
+        "$REMOTE_USER@$REMOTE_HOST" "exit" &>/dev/null; then
+        log_success "SSH key authentication already working!"
+        log_info "Host: $REMOTE_HOST"
+        log_info "User: $REMOTE_USER"
+        echo ""
+        log_warn "The SSH key is already configured on this host."
+        
+        # Check if we can access as root too
+        if ssh -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=$SSH_TIMEOUT \
+            "root@$REMOTE_HOST" "exit" &>/dev/null; then
+            log_success "Root SSH access also working"
+        else
+            log_info "Root SSH access not configured"
+        fi
+        
+        echo ""
+        read -p "Do you want to reconfigure anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Nothing to do. Exiting."
+            exit 0
+        else
+            log_warn "Proceeding with reconfiguration..."
+            return 1  # Signal that we need password
+        fi
+    fi
+    
+    return 1  # Key doesn't work, need to continue with password
 }
 
 get_remote_password() {
@@ -385,12 +424,20 @@ main() {
     check_host_reachable
     generate_ssh_key
     
-    # Get password from user
-    get_remote_password
+    # Check if key already exists on remote (will exit if already configured)
+    check_existing_key_on_remote
+    NEED_PASSWORD=$?
     
-    # Copy and verify SSH key
-    copy_ssh_key_to_user
-    verify_ssh_key_works
+    # Only get password if we need it
+    if [ $NEED_PASSWORD -eq 1 ]; then
+        get_remote_password
+        
+        # Copy and verify SSH key
+        copy_ssh_key_to_user
+        verify_ssh_key_works
+    else
+        log_info "Skipping key copy (already exists)"
+    fi
     
     # Backup before making changes
     backup_remote_sshd_config
