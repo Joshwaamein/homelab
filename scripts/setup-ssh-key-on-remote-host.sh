@@ -14,7 +14,7 @@
 # - Early detection of existing SSH keys
 #
 # Author: Homelab Automation
-# Version: 2.1
+# Version: 2.2
 
 set -uo pipefail  # Exit on undefined vars, pipe failures (but not on error to handle failures gracefully)
 
@@ -32,7 +32,7 @@ SSH_TIMEOUT=5
 
 # Script info
 SCRIPT_NAME=$(basename "$0")
-VERSION="2.1"
+VERSION="2.2"
 
 #==============================================================================
 # Helper Functions
@@ -260,8 +260,14 @@ backup_remote_sshd_config() {
     
     local backup_name="sshd_config.backup.$(date +%Y%m%d-%H%M%S)"
     
+    # Determine if we need sudo or not
+    local SUDO_CMD=""
+    if [ "$REMOTE_USER" != "root" ]; then
+        SUDO_CMD="sudo"
+    fi
+    
     if ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" \
-        "sudo cp /etc/ssh/sshd_config /etc/ssh/$backup_name" 2>/dev/null; then
+        "$SUDO_CMD cp /etc/ssh/sshd_config /etc/ssh/$backup_name" 2>/dev/null; then
         log_success "Backup created: /etc/ssh/$backup_name"
         return 0
     else
@@ -272,6 +278,12 @@ backup_remote_sshd_config() {
 
 setup_root_access() {
     log_step "Setting up root SSH access..."
+    
+    # Check if we're already root
+    if [ "$REMOTE_USER" = "root" ]; then
+        log_info "Already logged in as root, skipping root access setup"
+        return 0
+    fi
     
     # Use SSH key to run commands on remote host
     ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" bash << 'ENDSSH'
@@ -319,29 +331,35 @@ verify_root_access() {
 configure_secure_ssh() {
     log_step "Configuring secure SSH settings..."
     
-    ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" bash << 'ENDSSH'
+    # Determine if we need sudo or not
+    local SUDO_CMD=""
+    if [ "$REMOTE_USER" != "root" ]; then
+        SUDO_CMD="sudo"
+    fi
+    
+    ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" bash << ENDSSH
         # Backup current config (again, just to be safe)
-        sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.pre-hardening
+        $SUDO_CMD cp /etc/ssh/sshd_config /etc/ssh/sshd_config.pre-hardening
         
         # Configure SSH securely
         echo "Updating SSH configuration..."
-        sudo sed -i.bak 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
-        sudo sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-        sudo sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-        sudo sed -i 's/^#*ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+        $SUDO_CMD sed -i.bak 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+        $SUDO_CMD sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+        $SUDO_CMD sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+        $SUDO_CMD sed -i 's/^#*ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
         
         # Test configuration
         echo "Testing SSH configuration..."
-        if sudo sshd -t; then
+        if $SUDO_CMD sshd -t; then
             echo "Configuration valid"
             # Restart SSH service
             echo "Restarting SSH service..."
-            sudo systemctl restart sshd || sudo systemctl restart ssh
+            $SUDO_CMD systemctl restart sshd || $SUDO_CMD systemctl restart ssh
             echo "SSH service restarted"
         else
             echo "ERROR: Invalid SSH configuration!"
             echo "Restoring backup..."
-            sudo cp /etc/ssh/sshd_config.pre-hardening /etc/ssh/sshd_config
+            $SUDO_CMD cp /etc/ssh/sshd_config.pre-hardening /etc/ssh/sshd_config
             exit 1
         fi
 ENDSSH
