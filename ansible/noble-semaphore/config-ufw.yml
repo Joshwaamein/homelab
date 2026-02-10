@@ -1,6 +1,6 @@
 ---
 - name: Configure UFW firewall rules for all hosts
-  hosts: ubuntu_vms, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, pihole, ansible
+  hosts: ubuntu_vms, noble_net_alma, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, pihole, ansible, hosts
   become: yes
   gather_facts: true
   ignore_unreachable: true
@@ -8,7 +8,7 @@
   tasks:
     - name: Print hostname
       ansible.builtin.debug:
-        msg: "Configuring UFW on {{ ansible_hostname }}"
+        msg: "Configuring UFW on {{ ansible_hostname }} ({{ inventory_hostname }})"
 
     - name: Ensure UFW is installed (Debian/Ubuntu)
       ansible.builtin.apt:
@@ -17,7 +17,7 @@
         update_cache: yes
       when: ansible_os_family == "Debian"
 
-    - name: Ensure UFW is installed (RedHat/Alma)
+    - name: Ensure UFW is installed (RedHat/Alma/Rocky)
       ansible.builtin.yum:
         name: ufw
         state: present
@@ -39,6 +39,13 @@
             comment: 'SSH - CRITICAL for remote access'
           register: ssh_rule
 
+        - name: Add SSH rate limiting (prevent brute force)
+          community.general.ufw:
+            rule: limit
+            port: '22'
+            proto: tcp
+            comment: 'SSH rate limit - max 6 connections per 30 seconds'
+
         - name: Verify SSH rule was added
           ansible.builtin.assert:
             that:
@@ -55,6 +62,10 @@
             - { direction: 'outgoing', policy: 'allow' }
             - { direction: 'routed', policy: 'deny' }
 
+        - name: Enable UFW logging
+          community.general.ufw:
+            logging: 'low'
+
         - name: Apply base firewall rules (SSH, Zabbix, Tailscale)
           community.general.ufw:
             rule: allow
@@ -64,9 +75,9 @@
           loop:
             - { port: '22', proto: 'tcp', comment: 'SSH' }
             - { port: '10050', proto: 'tcp', comment: 'Zabbix Agent' }
-            - { port: '39098', proto: 'udp', comment: 'Tailscale' }
-            - { port: '44840', proto: 'udp', comment: 'Tailscale DERP' }
+            - { port: '41641', proto: 'udp', comment: 'Tailscale' }
 
+        # === Evernode Configuration ===
         - name: Configure Evernode rules
           community.general.ufw:
             rule: allow
@@ -85,6 +96,19 @@
             - { port: '22861-22864', proto: 'tcp', comment: 'Additional contracts' }
           when: "'evernode' in group_names"
 
+        # === Xahau Configuration ===
+        - name: Configure Xahau rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            comment: "Xahau"
+          loop:
+            - '80'
+            - '443'
+            - '21337'
+          when: "'xahau' in group_names"
+
+        # === UniFi Configuration ===
         - name: Configure UniFi rules
           community.general.ufw:
             rule: allow
@@ -105,6 +129,19 @@
             - { src: '192.168.0.0/16', port: '1900', proto: 'udp', comment: 'L2 Discovery local' }
           when: "'unifi' in group_names"
 
+        # === Nginx Configuration ===
+        - name: Configure Nginx rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+            comment: "Nginx - Web Server"
+          loop:
+            - '80'
+            - '443'
+          when: "'nginx' in group_names"
+
+        # === Pi-hole Configuration ===
         - name: Configure Pi-hole rules
           community.general.ufw:
             rule: allow
@@ -120,12 +157,13 @@
             - { port: '443', proto: 'tcp', comment: 'Web Interface HTTPS' }
           when: "'pihole' in group_names"
 
-        - name: Configure Servarrr rules
+        # === Servarr Stack Configuration ===
+        - name: Configure Servarr rules
           community.general.ufw:
             rule: "{{ item.rule | default('allow') }}"
             port: "{{ item.port }}"
             proto: "{{ item.proto | default('tcp') }}"
-            comment: "Servarrr - {{ item.comment }}"
+            comment: "Servarr - {{ item.comment }}"
           loop:
             - { port: '8080', comment: 'SABnzbd' }
             - { port: '8787', comment: 'Readarr' }
@@ -148,6 +186,7 @@
             - { port: '445', rule: 'deny', comment: 'Block SMB' }
           when: "'servarr' in group_names or 'servarrr' in group_names"
 
+        # === Ansible/Semaphore Configuration ===
         - name: Configure Ansible host rules
           community.general.ufw:
             rule: allow
@@ -157,6 +196,20 @@
             - '3000'
           when: "'ansible' in group_names"
 
+        # === Zabbix Server Configuration ===
+        - name: Configure Zabbix Server rules (AlmaLinux)
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Zabbix - {{ item.comment }}"
+          loop:
+            - { port: '10051', proto: 'tcp', comment: 'Zabbix Server' }
+            - { port: '80', proto: 'tcp', comment: 'Zabbix Web Interface' }
+            - { port: '443', proto: 'tcp', comment: 'Zabbix Web HTTPS' }
+          when: "'noble_net_alma' in group_names or ansible_hostname is search('zabbix')"
+
+        # === Data Services Configuration ===
         - name: Configure pve_data rules
           community.general.ufw:
             rule: allow
@@ -168,17 +221,30 @@
             - { port: '5432', comment: 'PostgreSQL' }
           when: "'pve_data' in group_names"
 
-        - name: Configure Xahau rules
+        # === Presearch Configuration ===
+        - name: Configure Presearch rules
           community.general.ufw:
             rule: allow
-            port: "{{ item }}"
-            comment: "Xahau"
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Presearch - {{ item.comment }}"
           loop:
-            - '80'
-            - '443'
-            - '21337'
-          when: "'xahau' in group_names"
+            - { port: '3000', proto: 'tcp', comment: 'Presearch Web UI' }
+          when: "'presearch' in group_names"
 
+        # === Mysterium (Myst) Configuration ===
+        - name: Configure Mysterium rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Mysterium - {{ item.comment }}"
+          loop:
+            - { port: '4449', proto: 'tcp', comment: 'Mysterium API' }
+            - { port: '44158', proto: 'tcp', comment: 'Mysterium Transactor' }
+          when: "'myst' in group_names"
+
+        # === Raspberry Pi Configuration ===
         - name: Configure Pi4 rules
           community.general.ufw:
             rule: allow
@@ -186,6 +252,7 @@
             comment: "Pi4 services"
           when: "'pi4' in group_names"
 
+        # === Docker Host Configuration ===
         - name: Configure ubuntu_docker rules
           community.general.ufw:
             rule: allow
@@ -197,6 +264,42 @@
             - '8080'
             - '8082'
           when: "'ubuntu_docker' in group_names"
+
+        # === Discord Bot Configuration ===
+        - name: Configure Discord Bot rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            comment: "Discord Bot services"
+          loop:
+            - '3000'
+          when: "'discord_bot' in group_names"
+
+        # === Smokeping Configuration ===
+        - name: Configure Smokeping rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+            comment: "Smokeping - Network Monitoring"
+          loop:
+            - '80'
+            - '443'
+          when: "ansible_hostname is search('smokeping')"
+
+        # === AI Services Configuration ===
+        - name: Configure AI services rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+            comment: "AI Services"
+          loop:
+            - '8080'
+            - '8188'
+            - '7860'
+            - '11434'
+          when: "ansible_hostname is search('ai')"
 
         - name: Enable UFW with confirmation
           community.general.ufw:
@@ -225,3 +328,10 @@
       when: 
         - "'proxmox' not in group_names"
         - "'pbs' not in group_names"
+        - "ansible_virtualization_role is not defined or ansible_virtualization_role != 'host' or ansible_system != 'Linux' or 'pve' not in ansible_hostname"
+
+    - name: Summary for skipped hosts
+      ansible.builtin.debug:
+        msg: "Skipping UFW configuration for {{ ansible_hostname }} - This is a Proxmox host/PBS which manages its own firewall"
+      when: 
+        - "'proxmox' in group_names or 'pbs' in group_names or (ansible_virtualization_role is defined and ansible_virtualization_role == 'host' and 'pve' in ansible_hostname)"

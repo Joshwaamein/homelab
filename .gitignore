@@ -1,4 +1,5 @@
 # Sensitive inventory files with real IPs and hostnames
+ansible/inventory
 ansible/noble-semaphore/inventory
 ansible/noble-semaphore/users.txt
 ansible/users.txt
