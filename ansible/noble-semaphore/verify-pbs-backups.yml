@@ -1,0 +1,121 @@
+---
+- name: Verify Proxmox Backup Server (PBS) Backups
+  hosts: pbs
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: backup, verification, pbs
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "PBS Backup Verification"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    # ============================================
+    # PHASE 1: CHECK PBS SERVICE STATUS
+    # ============================================
+
+    - name: Check Proxmox Backup Server service status
+      ansible.builtin.systemd:
+        name: proxmox-backup-proxy
+        state: started
+      check_mode: yes
+      register: pbs_service
+      failed_when: false
+
+    - name: Check PBS datastore status
+      ansible.builtin.shell: proxmox-backup-manager datastore list 2>/dev/null || echo "Unable to list datastores"
+      register: datastore_list
+      changed_when: false
+      failed_when: false
+
+    - name: Display datastores
+      ansible.builtin.debug:
+        msg: "{{ datastore_list.stdout_lines }}"
+      when: datastore_list.rc == 0
+
+    # ============================================
+    # PHASE 2: CHECK BACKUP AGE AND STATUS
+    # ============================================
+
+    - name: Check for recent backups (last 48 hours)
+      ansible.builtin.shell: |
+        find /mnt/datastore/*/vm/ -name "*.img.fidx" -mtime -2 2>/dev/null | wc -l
+      register: recent_backups
+      changed_when: false
+      failed_when: false
+
+    - name: Check for old backups (30+ days)
+      ansible.builtin.shell: |
+        find /mnt/datastore/*/vm/ -name "*.img.fidx" -mtime +30 2>/dev/null | wc -l
+      register: old_backups
+      changed_when: false
+      failed_when: false
+
+    - name: Get total backup count
+      ansible.builtin.shell: |
+        find /mnt/datastore/*/vm/ -name "*.img.fidx" 2>/dev/null | wc -l
+      register: total_backups
+      changed_when: false
+      failed_when: false
+
+    - name: Check datastore disk usage
+      ansible.builtin.shell: df -h /mnt/datastore* 2>/dev/null || df -h | grep datastore
+      register: datastore_usage
+      changed_when: false
+      failed_when: false
+
+    # ============================================
+    # PHASE 3: VERIFY BACKUP INTEGRITY
+    # ============================================
+
+    - name: Check for failed backup tasks (if logs available)
+      ansible.builtin.shell: |
+        grep -i "error\|failed" /var/log/proxmox-backup/*.log 2>/dev/null | tail -20 || echo "No error logs found"
+      register: backup_errors
+      changed_when: false
+      failed_when: false
+
+    - name: Get PBS GC (Garbage Collection) status
+      ansible.builtin.shell: proxmox-backup-manager gc status 2>/dev/null || echo "GC status unavailable"
+      register: gc_status
+      changed_when: false
+      failed_when: false
+
+    # ============================================
+    # PHASE 4: REPORTING
+    # ============================================
+
+    - name: Generate backup verification report
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "PBS Backup Verification Report"
+          - "PBS Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+          - ""
+          - "📊 BACKUP STATISTICS:"
+          - "Total backups: {{ total_backups.stdout | default('0') }}"
+          - "Recent backups (< 48hrs): {{ recent_backups.stdout | default('0') }}"
+          - "Old backups (> 30 days): {{ old_backups.stdout | default('0') }}"
+          - ""
+          - "💾 DATASTORE USAGE:"
+          - "{{ datastore_usage.stdout_lines | default(['No datastore info']) | join('\n') }}"
+          - ""
+          - "📦 DATASTORES:"
+          - "{{ datastore_list.stdout_lines | default(['Unable to list']) | join('\n') }}"
+          - ""
+          - "⚠️ RECENT ERRORS:"
+          - "{{ backup_errors.stdout_lines | default(['No errors']) | length }} error entries in logs"
+          - ""
+          - "🗑️ GARBAGE COLLECTION:"
+          - "{{ gc_status.stdout_lines | default(['Status unavailable']) | join('\n') }}"
+          - ""
+          - "✅ RECOMMENDATIONS:"
+          - "{{ '✓ Backups are current' if (recent_backups.stdout | int) > 0 else '⚠ No recent backups found!' }}"
+          - "{{ '⚠ Consider pruning old backups' if (old_backups.stdout | int) > 10 else '✓ Backup retention healthy' }}"
+          - "═══════════════════════════════════════════"

@@ -1,28 +1,270 @@
 ---
-- name: Using Zabbix collection to install Zabbix Agent for Devices on Tailscale Net
+- name: Intelligent Zabbix Agent 2 Deployment with Auto-Configuration
   hosts: ubuntu_vms, pbs, hosts
   gather_facts: true
   become: true
   ignore_unreachable: true
-  tags: zabbix,agent
+  tags: zabbix, agent
 
-  roles:
-    - role: community.zabbix.zabbix_agent
-      vars:
-        zabbix_agent_server: 100.85.45.123
-        zabbix_agent_serveractive: 100.85.45.123
-        zabbix_agent_host_state: present
-        zabbix_host_groups:
-          - Linux Servers
-        zabbix_agent_link_templates:
-          - Template OS Linux
+  vars:
+    # Discovery-enabled templates (standard Zabbix templates)
+    zabbix_discovery_templates:
+      - "Linux by Zabbix agent active"
+    
+    # Template mapping based on inventory groups
+    zabbix_template_map:
+      evernode: ["Docker by Zabbix agent active"]
+      nginx: ["Nginx by Zabbix agent"]
+      pihole: ["DNS"]
+      servarr: ["Docker by Zabbix agent active"]
+      unifi: []
+      pbs: []
+      proxmox: []
+      pi4: []
+    
+    # Host group mapping based on inventory groups
+    zabbix_hostgroup_map:
+      evernode: ["Evernode Hosts", "Blockchain Services"]
+      nginx: ["Web Servers"]
+      pihole: ["DNS Servers"]
+      servarr: ["Media Stack"]
+      unifi: ["Network Infrastructure"]
+      pbs: ["Backup Infrastructure"]
+      proxmox: ["Hypervisors"]
+      pi4: ["Raspberry Pi"]
 
   tasks:
-    - name: Print hostname
-      debug:
-        msg: "Hostname is {{ ansible_hostname }}"
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Intelligent Zabbix Agent 2 Deployment"
+          - "Host: {{ ansible_hostname }}"
+          - "IP: {{ ansible_default_ipv4.address | default('unknown') }}"
+          - "═══════════════════════════════════════════"
 
-    - name: Print summary
-      debug:
-        msg: "Zabbix Agent installed and configured on {{ inventory_hostname }}"
-      changed_when: false
+    # ============================================
+    # PHASE 1: AGENT INSTALLATION & CONFIGURATION
+    # ============================================
+    
+    - name: Stop old zabbix-agent if exists (upgrade to agent2)
+      ansible.builtin.systemd:
+        name: zabbix-agent
+        state: stopped
+        enabled: false
+      failed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: Add Zabbix repository
+      ansible.builtin.get_url:
+        url: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ zabbix_version }}+ubuntu{{ ansible_distribution_version }}_all.deb"
+        dest: /tmp/zabbix-release.deb
+        mode: '0644'
+      register: download_repo
+      when: ansible_os_family == "Debian"
+
+    - name: Install Zabbix repository package
+      ansible.builtin.apt:
+        deb: /tmp/zabbix-release.deb
+        state: present
+      when: ansible_os_family == "Debian" and download_repo.changed
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install zabbix-agent2
+      ansible.builtin.apt:
+        name: zabbix-agent2
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Deploy zabbix_agent2 configuration from template
+      ansible.builtin.template:
+        src: templates/zabbix_agent2.conf.j2
+        dest: /etc/zabbix/zabbix_agent2.conf
+        owner: zabbix
+        group: zabbix
+        mode: '0644'
+        backup: yes
+      when: ansible_os_family == "Debian"
+      notify: Restart zabbix-agent2
+
+    - name: Enable safe discovery on agent side
+      ansible.builtin.blockinfile:
+        path: /etc/zabbix/zabbix_agent2.conf
+        marker: "# {mark} ANSIBLE MANAGED DISCOVERY KEYS"
+        block: |
+          # Safe discovery keys (not system.run)
+          AllowKey=system.hostname
+          AllowKey=system.uname
+          AllowKey=vfs.fs.discovery
+          AllowKey=net.if.discovery
+        backup: yes
+      notify: Restart zabbix-agent2
+
+    - name: Ensure zabbix-agent2 is enabled and started
+      ansible.builtin.systemd:
+        name: zabbix-agent2
+        state: started
+        enabled: true
+      when: ansible_os_family == "Debian"
+
+    # ============================================
+    # PHASE 2: ZABBIX HOST GROUPS SETUP
+    # ============================================
+
+    - name: Ensure required Zabbix host groups exist
+      community.zabbix.zabbix_hostgroup:
+        server_url: "http://{{ zabbix_server_ip }}"
+        login_user: "{{ zabbix_admin_user }}"
+        login_password: "{{ zabbix_admin_password }}"
+        name: "{{ item }}"
+        state: present
+      loop:
+        - "Linux Servers"
+        - "Evernode Hosts"
+        - "Blockchain Services"
+        - "Web Servers"
+        - "DNS Servers"
+        - "Media Stack"
+        - "Network Infrastructure"
+        - "Backup Infrastructure"
+        - "Hypervisors"
+        - "Raspberry Pi"
+        - "Virtual Machines"
+      delegate_to: localhost
+      run_once: true
+      when:
+        - zabbix_admin_user is defined
+        - zabbix_admin_password is defined
+
+    # ============================================
+    # PHASE 3: INTELLIGENCE GATHERING
+    # ============================================
+
+    - name: Get Tailscale IP addresses
+      ansible.builtin.set_fact:
+        tailscale_ips: "{{ ansible_all_ipv4_addresses | select('match', '^100\\.') | list }}"
+
+    - name: Determine host role from inventory groups
+      ansible.builtin.set_fact:
+        detected_roles: "{{ group_names | select('in', zabbix_template_map.keys() | list) | list }}"
+
+    - name: Build dynamic template list
+      ansible.builtin.set_fact:
+        dynamic_templates: "{{ zabbix_discovery_templates + (detected_roles | map('extract', zabbix_template_map) | flatten | unique | list) }}"
+
+    - name: Build dynamic host groups list
+      ansible.builtin.set_fact:
+        dynamic_hostgroups: >-
+          {{
+            ['Linux Servers'] +
+            (detected_roles | map('extract', zabbix_hostgroup_map) | flatten | unique | list) +
+            (['Virtual Machines'] if 'ubuntu_vms' in group_names else []) +
+            (['Raspberry Pi'] if 'pi' in ansible_hostname | lower or 'pi4' in group_names else [])
+          }}
+
+    - name: Build dynamic tags
+      ansible.builtin.set_fact:
+        dynamic_tags:
+          - tag: "Environment"
+            value: "Production"
+          - tag: "Location"
+            value: "Noble Network"
+          - tag: "Network"
+            value: "Tailscale"
+          - tag: "OS"
+            value: "{{ ansible_distribution }}"
+          - tag: "OS Version"
+            value: "{{ ansible_distribution_version }}"
+          - tag: "Managed By"
+            value: "Ansible"
+
+    - name: Add role-based tags
+      ansible.builtin.set_fact:
+        dynamic_tags: "{{ dynamic_tags + [{'tag': 'Role', 'value': item}] }}"
+      loop: "{{ detected_roles }}"
+      when: detected_roles | length > 0
+
+    - name: Add hardware type tag
+      ansible.builtin.set_fact:
+        dynamic_tags: "{{ dynamic_tags + [{'tag': 'Hardware', 'value': 'Raspberry Pi'}] }}"
+      when: "'pi' in ansible_hostname | lower or 'pi4' in group_names"
+
+    - name: Display intelligence gathered
+      ansible.builtin.debug:
+        msg:
+          - "Intelligence Gathered:"
+          - "  Tailscale IPs: {{ tailscale_ips }}"
+          - "  Detected Roles: {{ detected_roles }}"
+          - "  Templates to Apply: {{ dynamic_templates }}"
+          - "  Host Groups: {{ dynamic_hostgroups }}"
+          - "  Tags: {{ dynamic_tags | length }} tags"
+
+    # ============================================
+    # PHASE 4: ZABBIX SERVER INTEGRATION
+    # ============================================
+
+    - name: Create or update host in Zabbix (with smart matching)
+      community.zabbix.zabbix_host:
+        server_url: "http://{{ zabbix_server_ip }}"
+        login_user: "{{ zabbix_admin_user }}"
+        login_password: "{{ zabbix_admin_password }}"
+        host_name: "{{ ansible_hostname }}"
+        visible_name: "{{ ansible_hostname }}"
+        description: "Managed by Ansible | Inventory: {{ inventory_hostname }} | Auto-configured"
+        host_groups: "{{ dynamic_hostgroups }}"
+        link_templates: "{{ dynamic_templates }}"
+        tags: "{{ dynamic_tags }}"
+        interfaces:
+          - type: 1
+            main: 1
+            useip: 1
+            ip: "{{ tailscale_ips[0] }}"
+            dns: ""
+            port: 10050
+        force: yes
+        state: present
+        status: enabled
+      when:
+        - tailscale_ips | length > 0
+        - zabbix_admin_user is defined
+        - zabbix_admin_password is defined
+      delegate_to: localhost
+      register: zabbix_host_result
+
+    # ============================================
+    # PHASE 5: VERIFICATION & REPORTING
+    # ============================================
+
+    - name: Wait for agent to be responsive
+      ansible.builtin.wait_for:
+        port: 10050
+        timeout: 30
+        state: started
+      ignore_errors: yes
+
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "✓ Zabbix Agent 2 Deployment Complete"
+          - "Host: {{ ansible_hostname }}"
+          - "Tailscale IP: {{ tailscale_ips[0] if tailscale_ips | length > 0 else 'None' }}"
+          - "Templates Applied: {{ dynamic_templates | join(', ') }}"
+          - "Host Groups: {{ dynamic_hostgroups | join(', ') }}"
+          - "Tags: {{ dynamic_tags | length }} tags configured"
+          - "Discovery: Enabled"
+          - "Status: {{ 'Updated' if zabbix_host_result is changed else 'No changes needed' }}"
+          - "═══════════════════════════════════════════"
+      when: zabbix_host_result is defined
+
+  handlers:
+    - name: Restart zabbix-agent2
+      ansible.builtin.systemd:
+        name: zabbix-agent2
+        state: restarted
+        enabled: true

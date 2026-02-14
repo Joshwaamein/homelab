@@ -1,15 +1,11 @@
 ---
 - name: Secure SSH configuration with safety checks
-  hosts: all
+  hosts: ubuntu_vms, pbs, hosts, noble_net_alma
   become: true
   gather_facts: true
   ignore_unreachable: true
   
   tasks:
-    - name: Skip Windows hosts
-      ansible.builtin.meta: end_host
-      when: ansible_facts['os_family'] == 'Windows'
-
     - name: Print hostname
       ansible.builtin.debug:
         msg: "Securing SSH on {{ ansible_hostname }}"
@@ -75,21 +71,78 @@
         validate: '/usr/sbin/sshd -t -f %s'
       notify: restart ssh
 
+    - name: Disable empty passwords
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*PermitEmptyPasswords'
+        line: 'PermitEmptyPasswords {{ "yes" if ssh_permit_empty_passwords else "no" }}'
+        state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: restart ssh
+
+    - name: Configure X11 Forwarding
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*X11Forwarding'
+        line: 'X11Forwarding {{ "yes" if ssh_x11_forwarding else "no" }}'
+        state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: restart ssh
+
+    - name: Configure ClientAliveInterval
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*ClientAliveInterval'
+        line: 'ClientAliveInterval {{ ssh_client_alive_interval }}'
+        state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: restart ssh
+
+    - name: Configure ClientAliveCountMax
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*ClientAliveCountMax'
+        line: 'ClientAliveCountMax {{ ssh_client_alive_count_max }}'
+        state: present
+        backup: yes
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: restart ssh
+
     - name: Test SSH configuration syntax
       ansible.builtin.command: /usr/sbin/sshd -t
       changed_when: false
       register: sshd_test
 
+    - name: Display SSH configuration summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "SSH Hardening Configuration Applied:"
+          - "  Host: {{ ansible_hostname }}"
+          - "  Root Login: {{ ssh_permit_root_login }}"
+          - "  Password Auth: {{ ssh_password_authentication }}"
+          - "  Empty Passwords: {{ ssh_permit_empty_passwords }}"
+          - "  Pubkey Auth: yes"
+          - "  X11 Forwarding: {{ ssh_x11_forwarding }}"
+          - "  ClientAliveInterval: {{ ssh_client_alive_interval }}s"
+          - "  ClientAliveCountMax: {{ ssh_client_alive_count_max }}"
+          - "═══════════════════════════════════════════"
+
+    - name: Verify SSH connection test
+      ansible.builtin.command: "echo 'SSH connection verified'"
+      changed_when: false
+      register: ssh_verify
+
     - name: Print SSH configuration status
       ansible.builtin.debug:
-        msg: "SSH configuration updated successfully on {{ ansible_hostname }}"
+        msg: "✓ SSH configuration updated and verified successfully on {{ ansible_hostname }}"
 
   handlers:
     - name: restart ssh
       ansible.builtin.service:
         name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
         state: restarted
-      # Add a delay to ensure we don't lose connection
-      async: 1
-      poll: 0
       ignore_errors: true

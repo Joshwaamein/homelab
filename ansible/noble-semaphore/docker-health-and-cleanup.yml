@@ -1,0 +1,132 @@
+---
+- name: Docker Health Check and Cleanup
+  hosts: ubuntu_vms
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: docker, cleanup, maintenance
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Docker Health Check & Cleanup"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    - name: Check if Docker is installed
+      ansible.builtin.command: which docker
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Skip non-Docker hosts
+      ansible.builtin.meta: end_host
+      when: docker_check.rc != 0
+
+    - name: Get Docker version
+      ansible.builtin.command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Get disk space before cleanup
+      ansible.builtin.shell: df -h /var/lib/docker 2>/dev/null || df -h / | tail -1 | awk '{print $3, $4, $5}'
+      register: disk_before
+      changed_when: false
+
+    - name: List all containers (running and stopped)
+      ansible.builtin.command: docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+      register: container_list
+      changed_when: false
+
+    - name: Check for stopped containers
+      ansible.builtin.command: docker ps -a -f status=exited -q
+      register: stopped_containers
+      changed_when: false
+
+    - name: Check for unhealthy containers
+      ansible.builtin.shell: docker ps --filter health=unhealthy --format '{{.Names}}'
+      register: unhealthy_containers
+      changed_when: false
+      failed_when: false
+
+    - name: Get Docker disk usage
+      ansible.builtin.command: docker system df
+      register: docker_disk_usage
+      changed_when: false
+
+    - name: Display current Docker state
+      ansible.builtin.debug:
+        msg:
+          - "Current Docker State:"
+          - "{{ container_list.stdout }}"
+          - "---"
+          - "Disk Usage:"
+          - "{{ docker_disk_usage.stdout }}"
+          - "---"
+          - "Stopped containers: {{ stopped_containers.stdout_lines | length }}"
+          - "Unhealthy containers: {{ unhealthy_containers.stdout_lines | default([]) | length }}"
+
+    - name: Remove stopped containers
+      ansible.builtin.command: docker container prune -f
+      register: prune_containers
+      changed_when: "'Total reclaimed space' in prune_containers.stdout"
+
+    - name: Remove unused images
+      ansible.builtin.command: docker image prune -a -f
+      register: prune_images
+      changed_when: "'Total reclaimed space' in prune_images.stdout"
+
+    - name: Remove unused volumes
+      ansible.builtin.command: docker volume prune -f
+      register: prune_volumes
+      changed_when: "'Total reclaimed space' in prune_volumes.stdout"
+
+    - name: Remove unused networks
+      ansible.builtin.command: docker network prune -f
+      register: prune_networks
+      changed_when: "'Total reclaimed space' in prune_networks.stdout"
+
+    - name: Remove build cache
+      ansible.builtin.command: docker builder prune -af
+      register: prune_builder
+      changed_when: "'Total reclaimed space' in prune_builder.stdout"
+
+    - name: Get disk space after cleanup
+      ansible.builtin.shell: df -h /var/lib/docker 2>/dev/null || df -h / | tail -1 | awk '{print $3, $4, $5}'
+      register: disk_after
+      changed_when: false
+
+    - name: Get Docker disk usage after cleanup
+      ansible.builtin.command: docker system df
+      register: docker_disk_after
+      changed_when: false
+
+    - name: Display cleanup summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Docker Cleanup Complete - {{ ansible_hostname }}"
+          - "Docker Version: {{ docker_version.stdout }}"
+          - "---"
+          - "Disk Space:"
+          - "Before: {{ disk_before.stdout }}"
+          - "After:  {{ disk_after.stdout }}"
+          - "---"
+          - "Containers: {{ prune_containers.stdout }}"
+          - "Images: {{ prune_images.stdout }}"
+          - "Volumes: {{ prune_volumes.stdout }}"
+          - "Networks: {{ prune_networks.stdout }}"
+          - "Build Cache: {{ prune_builder.stdout }}"
+          - "---"
+          - "Final Docker Disk Usage:"
+          - "{{ docker_disk_after.stdout }}"
+          - "═══════════════════════════════════════════"
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+        enabled: true

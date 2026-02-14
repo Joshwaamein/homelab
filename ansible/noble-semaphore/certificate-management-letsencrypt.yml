@@ -1,0 +1,103 @@
+---
+- name: Let's Encrypt Certificate Management
+  hosts: nginx, pihole, pve_data
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: certificates, letsencrypt, ssl
+
+  vars:
+    # Add domains to vars.yml or override per host
+    letsencrypt_email: "{{ vault_letsencrypt_email | default('admin@example.com') }}"
+    certbot_create_if_missing: true
+    certbot_create_standalone_stop_services: []
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Let's Encrypt Certificate Management"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    - name: Install certbot (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Check for existing certificates
+      ansible.builtin.command: certbot certificates
+      register: existing_certs
+      changed_when: false
+      failed_when: false
+
+    - name: Display existing certificates
+      ansible.builtin.debug:
+        msg: "{{ existing_certs.stdout_lines }}"
+      when: existing_certs.rc == 0
+
+    - name: Check certificate expiration
+      ansible.builtin.shell: |
+        for cert in /etc/letsencrypt/live/*/cert.pem; do
+          if [ -f "$cert" ]; then
+            domain=$(dirname "$cert" | xargs basename)
+            expiry=$(openssl x509 -in "$cert" -noout -enddate | cut -d= -f2)
+            days=$(( ($(date -d "$expiry" +%s) - $(date +%s)) / 86400 ))
+            echo "$domain: $days days until expiration"
+          fi
+        done
+      register: cert_expiration
+      changed_when: false
+      failed_when: false
+
+    - name: Display certificate expiration status
+      ansible.builtin.debug:
+        msg: "{{ cert_expiration.stdout_lines }}"
+      when: cert_expiration.stdout | length > 0
+
+    - name: Setup automatic renewal via cron/timer
+      ansible.builtin.cron:
+        name: "Certbot automatic renewal"
+        minute: "0"
+        hour: "3"
+        job: "certbot renew --quiet --post-hook 'systemctl reload nginx || true'"
+        user: root
+      when: "'nginx' in group_names"
+
+    - name: Enable certbot renewal timer (systemd)
+      ansible.builtin.systemd:
+        name: certbot.timer
+        state: started
+        enabled: true
+      when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
+      failed_when: false
+
+    - name: Test certificate renewal (dry run)
+      ansible.builtin.command: certbot renew --dry-run
+      register: renewal_test
+      changed_when: false
+      failed_when: false
+
+    - name: Display renewal test results
+      ansible.builtin.debug:
+        msg:
+          - "Renewal Test: {{ 'SUCCESS' if renewal_test.rc == 0 else 'FAILED' }}"
+          - "{{ renewal_test.stdout_lines | default(['No output']) | join('\n') }}"
+
+    - name: Display summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Certificate Management Complete"
+          - "Host: {{ ansible_hostname }}"
+          - "Certbot: Installed"
+          - "Auto-renewal: {{ 'Enabled' if renewal_test.rc == 0 else 'Check required' }}"
+          - "---"
+          - "To request a new certificate, run manually:"
+          - "certbot --nginx -d yourdomain.com"
+          - "═══════════════════════════════════════════"

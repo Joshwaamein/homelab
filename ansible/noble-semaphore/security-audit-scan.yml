@@ -1,0 +1,159 @@
+---
+- name: Security Audit and Vulnerability Scanning
+  hosts: ubuntu_vms, noble_net_alma, pbs, hosts
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: security, audit, vulnerability
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Security Audit & Vulnerability Scan"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    # ============================================
+    # PHASE 1: INSTALL SECURITY TOOLS
+    # ============================================
+
+    - name: Install security audit tools (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - rkhunter        # Rootkit scanner
+          - chkrootkit      # Rootkit checker
+          - lynis           # Security auditing tool
+          - debsecan        # Debian security tracker
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install security audit tools (RedHat/Alma)
+      ansible.builtin.yum:
+        name:
+          - rkhunter
+          - chkrootkit
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # ============================================
+    # PHASE 2: UPDATE SECURITY DATABASES
+    # ============================================
+
+    - name: Update rkhunter database
+      ansible.builtin.command: rkhunter --update
+      register: rkhunter_update
+      changed_when: false
+      failed_when: false
+
+    - name: Update rkhunter file properties
+      ansible.builtin.command: rkhunter --propupd
+      changed_when: false
+      failed_when: false
+
+    # ============================================
+    # PHASE 3: RUN SECURITY SCANS
+    # ============================================
+
+    - name: Run rkhunter scan
+      ansible.builtin.command: rkhunter --check --skip-keypress --report-warnings-only
+      register: rkhunter_scan
+      changed_when: false
+      failed_when: false
+
+    - name: Run chkrootkit scan
+      ansible.builtin.command: chkrootkit
+      register: chkrootkit_scan
+      changed_when: false
+      failed_when: false
+
+    - name: Run Lynis audit (quick scan)
+      ansible.builtin.command: lynis audit system --quick --quiet
+      register: lynis_scan
+      changed_when: false
+      failed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: Check for CVEs (Debian/Ubuntu only)
+      ansible.builtin.command: debsecan --suite {{ ansible_distribution_release }} --only-fixed
+      register: cve_scan
+      changed_when: false
+      failed_when: false
+      when: ansible_os_family == "Debian"
+
+    # ============================================
+    # PHASE 4: CHECK FAIL2BAN STATUS
+    # ============================================
+
+    - name: Get fail2ban status
+      ansible.builtin.command: fail2ban-client status
+      register: fail2ban_status
+      changed_when: false
+      failed_when: false
+
+    - name: Get fail2ban banned IPs
+      ansible.builtin.command: fail2ban-client status sshd
+      register: fail2ban_bans
+      changed_when: false
+      failed_when: false
+
+    # ============================================
+    # PHASE 5: CHECK SUSPICIOUS ACTIVITY
+    # ============================================
+
+    - name: Check for failed SSH login attempts
+      ansible.builtin.shell: grep "Failed password" /var/log/auth.log 2>/dev/null | tail -20
+      register: failed_logins
+      changed_when: false
+      failed_when: false
+
+    - name: Check for sudo usage
+      ansible.builtin.shell: grep "sudo:" /var/log/auth.log 2>/dev/null | tail -20
+      register: sudo_activity
+      changed_when: false
+      failed_when: false
+
+    - name: Check for listening ports
+      ansible.builtin.command: ss -tulpn
+      register: listening_ports
+      changed_when: false
+
+    - name: Check for world-writable files in /etc
+      ansible.builtin.shell: find /etc -type f -perm -002 2>/dev/null
+      register: world_writable
+      changed_when: false
+      failed_when: false
+
+    # ============================================
+    # PHASE 6: COMPREHENSIVE REPORTING
+    # ============================================
+
+    - name: Generate security audit report
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Security Audit Report - {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+          - ""
+          - "🔍 ROOTKIT SCAN (rkhunter):"
+          - "{{ rkhunter_scan.stdout_lines | default(['No warnings']) | join('\n') }}"
+          - ""
+          - "🔍 ROOTKIT CHECK (chkrootkit):"
+          - "{{ 'CLEAN' if 'INFECTED' not in chkrootkit_scan.stdout else 'WARNINGS FOUND - Review manually!' }}"
+          - ""
+          - "🔍 CVE VULNERABILITIES:"
+          - "{{ cve_scan.stdout_lines | default(['N/A or none found']) | join('\n') | truncate(500) }}"
+          - ""
+          - "🛡️ FAIL2BAN STATUS:"
+          - "{{ fail2ban_bans.stdout_lines | default(['fail2ban not running']) | join('\n') }}"
+          - ""
+          - "⚠️ RECENT FAILED SSH LOGINS:"
+          - "{{ failed_logins.stdout_lines | default(['None']) | length }} attempts"
+          - ""
+          - "⚠️ WORLD-WRITABLE FILES in /etc:"
+          - "{{ world_writable.stdout_lines | default(['None found']) | join('\n') }}"
+          - ""
+          - "✅ SECURITY AUDIT COMPLETE"
+          - "═══════════════════════════════════════════"

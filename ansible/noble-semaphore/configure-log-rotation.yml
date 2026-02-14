@@ -1,0 +1,136 @@
+---
+- name: Configure log rotation to prevent disk space issues
+  hosts: ubuntu_vms, noble_net_alma, pbs, hosts
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: logs, maintenance, logrotate
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Log Rotation Configuration"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    - name: Ensure logrotate is installed (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: logrotate
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure logrotate is installed (RedHat/Alma)
+      ansible.builtin.yum:
+        name: logrotate
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Configure aggressive system log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/ansible-managed-logs
+        content: |
+          # Ansible-managed log rotation configuration
+          
+          /var/log/syslog
+          /var/log/messages
+          /var/log/auth.log
+          /var/log/kern.log
+          /var/log/daemon.log
+          {
+              daily
+              rotate 7
+              missingok
+              notifempty
+              compress
+              delaycompress
+              sharedscripts
+              postrotate
+                  /usr/lib/rsyslog/rsyslog-rotate
+              endscript
+          }
+          
+          /var/log/apt/*.log
+          {
+              weekly
+              rotate 4
+              missingok
+              notifempty
+              compress
+          }
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Configure Docker log rotation (if Docker is installed)
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            }
+          }
+        mode: '0644'
+        owner: root
+        group: root
+      when: ansible_facts.services['docker.service'] is defined
+      notify: Restart Docker
+
+    - name: Configure Zabbix log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/zabbix-agent2
+        content: |
+          /var/log/zabbix/zabbix_agent2.log {
+              weekly
+              rotate 12
+              maxsize 100M
+              compress
+              delaycompress
+              missingok
+              notifempty
+          }
+        mode: '0644'
+      when: ansible_facts.services['zabbix-agent2.service'] is defined or ansible_facts.services['zabbix-agent.service'] is defined
+
+    - name: Test logrotate configuration
+      ansible.builtin.command: logrotate -d /etc/logrotate.conf
+      register: logrotate_test
+      changed_when: false
+      failed_when: false
+
+    - name: Force log rotation to take effect immediately (optional)
+      ansible.builtin.command: logrotate -f /etc/logrotate.conf
+      when: logrotate_test.rc == 0
+      register: force_rotate
+      changed_when: true
+
+    - name: Check current log sizes
+      ansible.builtin.shell: du -sh /var/log/* 2>/dev/null | sort -hr | head -10
+      register: log_sizes
+      changed_when: false
+
+    - name: Display log rotation summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Log Rotation Configuration Complete"
+          - "Host: {{ ansible_hostname }}"
+          - "---"
+          - "Top 10 Largest Logs:"
+          - "{{ log_sizes.stdout_lines | join('\n') }}"
+          - "---"
+          - "System logs: Daily rotation, 7 days retention"
+          - "Docker logs: 10MB max per container, 3 files"
+          - "Zabbix logs: Weekly rotation, 12 weeks retention"
+          - "═══════════════════════════════════════════"
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+      when: ansible_facts.services['docker.service'] is defined

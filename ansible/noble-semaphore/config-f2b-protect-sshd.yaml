@@ -11,6 +11,14 @@
       debug:
         msg: "Hostname is {{ ansible_hostname }}"
 
+    - name: Skip motioneye (LXC container with Debian 13 Trixie compatibility issues)
+      debug:
+        msg: "Skipping fail2ban configuration for motioneye - LXC container"
+      when: inventory_hostname == '100.88.27.41'
+
+    - meta: end_host
+      when: inventory_hostname == '100.88.27.41'
+
     - name: Notify if skipping non-Debian/Ubuntu host for config
       debug:
         msg: "Skipping config copy on non-Debian/Ubuntu host: {{ inventory_hostname }}"
