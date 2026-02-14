@@ -14,6 +14,30 @@
       # This prevents failure on hosts where facts couldn't be gathered.
       when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
       notify: Restart relevant services
+      register: timezone_result
+
+    - name: Display timezone configuration
+      ansible.builtin.debug:
+        msg: "✓ Timezone set to {{ timezone }} on {{ ansible_hostname }}"
+      when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
+
+    - name: Verify timezone was set correctly
+      ansible.builtin.command: timedatectl show --property=Timezone --value
+      register: current_tz
+      changed_when: false
+      when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
+
+    - name: Display comprehensive summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Timezone Configuration Complete"
+          - "Host: {{ ansible_hostname }}"
+          - "Expected Timezone: {{ timezone }}"
+          - "Current Timezone: {{ current_tz.stdout | default('Not verified') }}"
+          - "Status: {{ 'Changed' if timezone_result is changed else 'Already set' }}"
+          - "═══════════════════════════════════════════"
+      when: current_tz is defined
 
   handlers:
     # Handler for Debian/Ubuntu systems

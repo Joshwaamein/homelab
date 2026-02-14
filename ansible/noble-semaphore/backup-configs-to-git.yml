@@ -1,0 +1,134 @@
+---
+- name: Backup Important Configurations to Git Repository
+  hosts: ubuntu_vms, noble_net_alma, pbs, hosts
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: backup, config, git
+
+  vars:
+    backup_base_dir: "/root/config-backups"
+    backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Configuration Backup to Git"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_base_dir }}/{{ ansible_hostname }}"
+        state: directory
+        mode: '0700'
+
+    # ============================================
+    # PHASE 1: BACKUP SYSTEM CONFIGURATIONS
+    # ============================================
+
+    - name: Backup SSH configuration
+      ansible.builtin.copy:
+        src: /etc/ssh/sshd_config
+        dest: "{{ backup_base_dir }}/{{ ansible_hostname }}/sshd_config"
+        remote_src: yes
+      failed_when: false
+
+    - name: Backup fail2ban configuration
+      ansible.builtin.shell: |
+        if [ -d /etc/fail2ban ]; then
+          tar czf {{ backup_base_dir }}/{{ ansible_hostname }}/fail2ban-config.tar.gz /etc/fail2ban
+        fi
+      changed_when: false
+      failed_when: false
+
+    - name: Backup UFW rules
+      ansible.builtin.shell: ufw status verbose > {{ backup_base_dir }}/{{ ansible_hostname }}/ufw-rules.txt
+      changed_when: false
+      failed_when: false
+
+    - name: Backup cron jobs
+      ansible.builtin.shell: crontab -l > {{ backup_base_dir }}/{{ ansible_hostname }}/root-crontab.txt 2>/dev/null || echo "No crontab"
+      changed_when: false
+      failed_when: false
+
+    - name: Backup network configuration
+      ansible.builtin.copy:
+        src: /etc/netplan/
+        dest: "{{ backup_base_dir }}/{{ ansible_hostname }}/netplan/"
+        remote_src: yes
+      when: ansible_distribution == "Ubuntu"
+      failed_when: false
+
+    # ============================================
+    # PHASE 2: BACKUP SERVICE CONFIGURATIONS
+    # ============================================
+
+    - name: Backup Docker compose files
+      ansible.builtin.shell: |
+        find /opt /home -name "docker-compose.yml" -o -name "docker-compose.yaml" 2>/dev/null | 
+        xargs -I {} cp {} {{ backup_base_dir }}/{{ ansible_hostname }}/
+      changed_when: false
+      failed_when: false
+      when: docker_check is defined and docker_check.rc == 0
+
+    - name: Backup Nginx configuration
+      ansible.builtin.shell: tar czf {{ backup_base_dir }}/{{ ansible_hostname }}/nginx-config.tar.gz /etc/nginx
+      changed_when: false
+      failed_when: false
+      when: "'nginx' in group_names"
+
+    - name: Backup Zabbix agent configuration
+      ansible.builtin.copy:
+        src: /etc/zabbix/zabbix_agent2.conf
+        dest: "{{ backup_base_dir }}/{{ ansible_hostname }}/zabbix_agent2.conf"
+        remote_src: yes
+      failed_when: false
+
+    # ============================================
+    # PHASE 3: CREATE MANIFEST
+    # ============================================
+
+    - name: Create backup manifest
+      ansible.builtin.shell: |
+        cat > {{ backup_base_dir }}/{{ ansible_hostname }}/MANIFEST.txt << EOF
+        Configuration Backup Manifest
+        =============================
+        Host: {{ ansible_hostname }}
+        IP: {{ inventory_hostname }}
+        Date: {{ backup_timestamp }}
+        OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+        
+        Backed up configurations:
+        - SSH (sshd_config)
+        - fail2ban (if present)
+        - UFW firewall rules
+        - Cron jobs
+        - Network configuration
+        - Docker compose files (if present)
+        - Service configs (nginx, zabbix)
+        
+        Total backup size: $(du -sh {{ backup_base_dir }}/{{ ansible_hostname }} | awk '{print $1}')
+        EOF
+      changed_when: false
+
+    - name: List backed up files
+      ansible.builtin.command: ls -lh {{ backup_base_dir }}/{{ ansible_hostname }}/
+      register: backup_files
+      changed_when: false
+
+    - name: Display backup summary
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Configuration Backup Complete"
+          - "Host: {{ ansible_hostname }}"
+          - "Backup Location: {{ backup_base_dir }}/{{ ansible_hostname }}/"
+          - "---"
+          - "Backed up files:"
+          - "{{ backup_files.stdout_lines | join('\n') }}"
+          - "---"
+          - "✓ Next step: Pull backups to central location or commit to git"
+          - "═══════════════════════════════════════════"

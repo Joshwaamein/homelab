@@ -1,0 +1,75 @@
+---
+- name: Run fstrim on VMs to reclaim thin-provisioned storage
+  hosts: ubuntu_vms, noble_net_alma
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: fstrim, maintenance, storage
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "FSTRIM Storage Reclamation"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    - name: Check if fstrim is available
+      ansible.builtin.command: which fstrim
+      register: fstrim_check
+      changed_when: false
+      failed_when: false
+
+    - name: Get disk space before fstrim
+      ansible.builtin.shell: df -h / | tail -1 | awk '{print $3, $4, $5}'
+      register: disk_before
+      changed_when: false
+      when: fstrim_check.rc == 0
+
+    - name: Run fstrim on all mounted filesystems
+      ansible.builtin.command: fstrim -av
+      register: fstrim_result
+      when: fstrim_check.rc == 0
+      changed_when: "'bytes were trimmed' in fstrim_result.stdout"
+
+    - name: Get disk space after fstrim
+      ansible.builtin.shell: df -h / | tail -1 | awk '{print $3, $4, $5}'
+      register: disk_after
+      changed_when: false
+      when: fstrim_check.rc == 0
+
+    - name: Display fstrim results
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "FSTRIM Results for {{ ansible_hostname }}"
+          - "Before: Used={{ disk_before.stdout.split()[0] }} Free={{ disk_before.stdout.split()[1] }} ({{ disk_before.stdout.split()[2] }})"
+          - "After:  Used={{ disk_after.stdout.split()[0] }} Free={{ disk_after.stdout.split()[1] }} ({{ disk_after.stdout.split()[2] }})"
+          - "---"
+          - "{{ fstrim_result.stdout_lines | default(['No trimming performed']) | join('\n') }}"
+          - "═══════════════════════════════════════════"
+      when: fstrim_check.rc == 0
+
+    - name: Install fstrim if missing (via util-linux package)
+      ansible.builtin.apt:
+        name: util-linux
+        state: present
+      when: fstrim_check.rc != 0 and ansible_os_family == "Debian"
+
+    - name: Report if fstrim unavailable
+      ansible.builtin.debug:
+        msg: "⚠ fstrim not available on {{ ansible_hostname }} - installing util-linux"
+      when: fstrim_check.rc != 0
+
+    - name: Enable weekly fstrim timer (systemd)
+      ansible.builtin.systemd:
+        name: fstrim.timer
+        state: started
+        enabled: true
+      when: ansible_service_mgr is defined and ansible_service_mgr == 'systemd'
+      failed_when: false
+
+    - name: Display final summary
+      ansible.builtin.debug:
+        msg: "✓ fstrim completed successfully on {{ ansible_hostname }}"

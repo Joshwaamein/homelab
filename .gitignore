@@ -4,6 +4,9 @@ ansible/noble-semaphore/inventory
 ansible/noble-semaphore/users.txt
 ansible/users.txt
 
+# UFW firewall configuration (reveals network architecture and ports)
+ansible/noble-semaphore/config-ufw.yml
+
 # Ansible Vault files (encrypted credentials)
 **/vault.yml
 
