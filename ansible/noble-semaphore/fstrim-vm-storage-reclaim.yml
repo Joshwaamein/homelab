@@ -20,11 +20,13 @@
       register: fstrim_check
       changed_when: false
       failed_when: false
+      check_mode: false
 
     - name: Get disk space before fstrim
       ansible.builtin.shell: df -h / | tail -1 | awk '{print $3, $4, $5}'
       register: disk_before
       changed_when: false
+      check_mode: false
       when: fstrim_check.rc == 0
 
     - name: Run fstrim on all mounted filesystems
@@ -32,11 +34,17 @@
       register: fstrim_result
       when: fstrim_check.rc == 0
       changed_when: "'bytes were trimmed' in fstrim_result.stdout"
+      failed_when: 
+        - fstrim_result.rc != 0
+        - fstrim_result.rc != 32
+        - "'Operation not permitted' not in fstrim_result.stderr"
+        - "'not supported' not in fstrim_result.stderr"
 
     - name: Get disk space after fstrim
       ansible.builtin.shell: df -h / | tail -1 | awk '{print $3, $4, $5}'
       register: disk_after
       changed_when: false
+      check_mode: false
       when: fstrim_check.rc == 0
 
     - name: Display fstrim results
@@ -49,7 +57,16 @@
           - "---"
           - "{{ fstrim_result.stdout_lines | default(['No trimming performed']) | join('\n') }}"
           - "═══════════════════════════════════════════"
-      when: fstrim_check.rc == 0
+      when: 
+        - fstrim_check is defined
+        - fstrim_check.rc is defined
+        - fstrim_check.rc == 0
+        - disk_before is defined
+        - disk_before is not skipped
+        - disk_before.stdout is defined
+        - disk_after is defined
+        - disk_after is not skipped
+        - disk_after.stdout is defined
 
     - name: Install fstrim if missing (via util-linux package)
       ansible.builtin.apt:
