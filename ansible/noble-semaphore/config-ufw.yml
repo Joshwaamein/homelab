@@ -1,0 +1,280 @@
+---
+- name: Configure UFW firewall rules for all hosts
+  hosts: ubuntu_vms, noble_net_alma, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, pihole, motioneye, ansible, hosts
+  become: yes
+  gather_facts: true
+  ignore_unreachable: true
+  
+  tasks:
+    - name: Print hostname
+      ansible.builtin.debug:
+        msg: "Configuring UFW on {{ ansible_hostname }} ({{ inventory_hostname }})"
+
+    - name: Ensure UFW is installed (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure UFW is installed (RedHat/Alma/Rocky)
+      ansible.builtin.yum:
+        name: ufw
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Configure UFW for non-Proxmox hosts
+      block:
+        - name: Check current UFW status
+          ansible.builtin.command: ufw status
+          register: ufw_status
+          changed_when: false
+          failed_when: false
+
+        - name: CRITICAL - Ensure SSH is allowed BEFORE enabling UFW
+          community.general.ufw:
+            rule: allow
+            port: '22'
+            proto: tcp
+            comment: 'SSH - CRITICAL for remote access'
+          register: ssh_rule
+
+        - name: Add SSH rate limiting (prevent brute force)
+          community.general.ufw:
+            rule: limit
+            port: '22'
+            proto: tcp
+            comment: 'SSH rate limit - max 6 connections per 30 seconds'
+
+        - name: Verify SSH rule was added
+          ansible.builtin.assert:
+            that:
+              - ssh_rule is succeeded
+            fail_msg: "CRITICAL: Failed to add SSH rule. Aborting to prevent lockout!"
+            success_msg: "SSH rule confirmed - safe to proceed"
+
+        - name: Set UFW default policies
+          community.general.ufw:
+            direction: "{{ item.direction }}"
+            policy: "{{ item.policy }}"
+          loop:
+            - { direction: 'incoming', policy: 'deny' }
+            - { direction: 'outgoing', policy: 'allow' }
+            - { direction: 'routed', policy: 'deny' }
+
+        - name: Enable UFW logging
+          community.general.ufw:
+            logging: 'low'
+
+        - name: Apply base firewall rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "{{ item.comment }}"
+          loop: "{{ ufw_base_ports }}"
+
+        # === Evernode Configuration ===
+        - name: Configure Evernode rules (individual ports)
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+            comment: "Evernode - {{ item.comment }}"
+          loop: "{{ ufw_evernode_ports }}"
+          when: "'evernode' in group_names"
+
+        - name: Configure Evernode port ranges (using UFW command)
+          ansible.builtin.command: "ufw allow {{ item }}"
+          loop: "{{ ufw_evernode_ranges }}"
+          when: "'evernode' in group_names"
+          register: ufw_port_ranges
+          changed_when: "'Rule added' in ufw_port_ranges.stdout or 'Rule updated' in ufw_port_ranges.stdout"
+
+        # === Xahau Configuration ===
+        - name: Configure Xahau rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            comment: "Xahau"
+          loop: "{{ ufw_xahau_ports }}"
+          when: "'xahau' in group_names"
+
+        # === UniFi Configuration ===
+        - name: Configure UniFi rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+            comment: "UniFi - {{ item.comment }}"
+          loop: "{{ ufw_unifi_ports }}"
+          when: "'unifi' in group_names"
+
+        # === Nginx Configuration ===
+        - name: Configure Nginx rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+            comment: "Nginx - Web Server"
+          loop: "{{ ufw_nginx_ports }}"
+          when: "'nginx' in group_names"
+
+        # === Pi-hole Configuration ===
+        - name: Configure Pi-hole rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Pi-hole - {{ item.comment }}"
+          loop: "{{ ufw_pihole_ports }}"
+          when: "'pihole' in group_names"
+
+        # === Servarr Stack Configuration ===
+        - name: Configure Servarr rules
+          community.general.ufw:
+            rule: "{{ item.rule | default('allow') }}"
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Servarr - {{ item.comment }}"
+          loop: "{{ ufw_servarr_ports }}"
+          when: "'servarr' in group_names or 'servarrr' in group_names"
+
+        # === Ansible/Semaphore Configuration ===
+        - name: Configure Ansible host rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            comment: "Ansible - Management"
+          loop: "{{ ufw_ansible_ports }}"
+          when: "'ansible' in group_names"
+
+        # === Zabbix Server Configuration ===
+        - name: Configure Zabbix Server rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Zabbix - {{ item.comment }}"
+          loop: "{{ ufw_zabbix_ports }}"
+          when: "'noble_net_alma' in group_names or ansible_hostname is search('zabbix')"
+
+        # === Data Services Configuration ===
+        - name: Configure pve_data rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            comment: "Data services - {{ item.comment }}"
+          loop: "{{ ufw_pve_data_ports }}"
+          when: "'pve_data' in group_names"
+
+        # === Presearch Configuration ===
+        - name: Configure Presearch rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Presearch - {{ item.comment }}"
+          loop: "{{ ufw_presearch_ports }}"
+          when: "'presearch' in group_names"
+
+        # === Mysterium (Myst) Configuration ===
+        - name: Configure Mysterium rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Mysterium - {{ item.comment }}"
+          loop: "{{ ufw_mysterium_ports }}"
+          when: "'myst' in group_names or 'myst' in ansible_hostname or inventory_hostname in ufw_mysterium_host_ips"
+
+        # === Raspberry Pi Configuration ===
+        - name: Configure Pi4 rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ ufw_pi4_port }}"
+            comment: "Pi4 services"
+          when: "'pi4' in group_names or inventory_hostname in ufw_pi4_host_ips or 'ghost' in ansible_hostname"
+
+        # === Docker Host Configuration ===
+        - name: Configure ubuntu_docker rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            comment: "Docker - {{ item.comment }}"
+          loop: "{{ ufw_ubuntu_docker_ports }}"
+          when: "'ubuntu_docker' in group_names"
+
+        # === Discord Bot Configuration ===
+        - name: Configure Discord Bot rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            comment: "Discord Bot services"
+          loop: "{{ ufw_discord_bot_ports }}"
+          when: "'discord_bot' in group_names"
+
+        # === MotionEye Configuration ===
+        - name: Configure MotionEye rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "MotionEye - {{ item.comment }}"
+          loop: "{{ ufw_motioneye_ports }}"
+          when: "'motioneye' in group_names"
+
+        # === Smokeping Configuration ===
+        - name: Configure Smokeping rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+            comment: "Smokeping - Network Monitoring"
+          loop: "{{ ufw_smokeping_ports }}"
+          when: "ansible_hostname is search('smokeping')"
+
+        # === AI Services Configuration ===
+        - name: Configure AI services rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item }}"
+            proto: tcp
+            comment: "AI Services"
+          loop: "{{ ufw_ai_ports }}"
+          when: "ansible_hostname is search('ai')"
+
+        - name: Enable UFW with confirmation
+          community.general.ufw:
+            state: enabled
+          register: ufw_enabled
+
+        - name: Verify UFW is active
+          ansible.builtin.command: ufw status verbose
+          register: ufw_final_status
+          changed_when: false
+
+        - name: Display final UFW status
+          ansible.builtin.debug:
+            var: ufw_final_status.stdout_lines
+
+      rescue:
+        - name: EMERGENCY - Disable UFW on error
+          community.general.ufw:
+            state: disabled
+          ignore_errors: yes
+
+        - name: Alert about UFW failure
+          ansible.builtin.fail:
+            msg: "UFW configuration failed! Firewall has been disabled to prevent lockout."
+
+      when: 
+        - "'proxmox' not in group_names"
+        - "'pbs' not in group_names"
+        - "ansible_virtualization_role is not defined or ansible_virtualization_role != 'host' or ansible_system != 'Linux' or 'pve' not in ansible_hostname"
+
+    - name: Summary for skipped hosts
+      ansible.builtin.debug:
+        msg: "Skipping UFW configuration for {{ ansible_hostname }} - This is a Proxmox host/PBS which manages its own firewall"
+      when: 
+        - "'proxmox' in group_names or 'pbs' in group_names or (ansible_virtualization_role is defined and ansible_virtualization_role == 'host' and 'pve' in ansible_hostname)"
