@@ -6,4 +6,92 @@
 zabbix_admin_user: "Admin"
 zabbix_admin_password: "CHANGE_ME"
 
-# Add other sensitive variables here
+# UFW Port Configurations
+# All port configurations for the UFW firewall playbook
+# Customize these lists to match your infrastructure
+
+ufw_base_ports:
+  - { port: '22', proto: 'tcp', comment: 'SSH' }
+  - { port: '10050', proto: 'tcp', comment: 'Zabbix Agent' }
+  - { port: '41641', proto: 'udp', comment: 'Tailscale' }
+
+ufw_evernode_ports:
+  - { port: '80', proto: 'tcp', comment: 'HTTP' }
+  - { port: '443', proto: 'tcp', comment: 'HTTPS' }
+  # Add your Evernode-specific ports here
+
+ufw_evernode_ranges:
+  - "port_start:port_end/tcp comment 'Description'"
+  # Add port ranges here
+
+ufw_xahau_ports:
+  - '80'
+  - '443'
+  # Add Xahau ports
+
+ufw_unifi_ports:
+  - { port: '8080', proto: 'tcp', comment: 'Device inform' }
+  # Add UniFi controller ports
+
+ufw_nginx_ports:
+  - '80'
+  - '443'
+
+ufw_pihole_ports:
+  - { port: '53', proto: 'tcp', comment: 'DNS TCP' }
+  - { port: '53', proto: 'udp', comment: 'DNS UDP' }
+  # Add Pi-hole ports
+
+ufw_servarr_ports:
+  - { port: '8080', comment: 'SABnzbd' }
+  # Add all your Servarr stack ports
+
+ufw_ansible_ports:
+  - '3000'
+
+ufw_zabbix_ports:
+  - { port: '10051', proto: 'tcp', comment: 'Zabbix Server' }
+  # Add Zabbix server ports
+
+ufw_pve_data_ports:
+  - { port: '3000', comment: 'Grafana' }
+  # Add data services ports
+
+ufw_presearch_ports:
+  - { port: '3000', proto: 'tcp', comment: 'Presearch Web UI' }
+
+ufw_mysterium_ports:
+  - { port: '4449', proto: 'tcp', comment: 'Mysterium API' }
+  # Add Mysterium ports
+
+ufw_pi4_port: '5000'
+
+ufw_ubuntu_docker_ports:
+  - { port: '9000', comment: 'Portainer' }
+  # Add Docker host ports
+
+ufw_discord_bot_ports:
+  - '3000'
+
+ufw_motioneye_ports:
+  - { port: '8765', proto: 'tcp', comment: 'Web Interface' }
+  # Add MotionEye ports
+
+ufw_smokeping_ports:
+  - '80'
+  - '443'
+
+ufw_ai_ports:
+  - '8080'
+  # Add AI service ports
+
+# Host-specific detection IPs
+ufw_mysterium_host_ips:
+  - 'ip_address_1'
+  - 'ip_address_2'
+
+ufw_pi4_host_ips:
+  - 'ip_address_1'
+
+# Let's Encrypt Email (optional)
+vault_letsencrypt_email: "your_email@example.com"
