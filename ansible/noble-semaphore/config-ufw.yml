@@ -1,6 +1,6 @@
 ---
 - name: Configure UFW firewall rules for all hosts
-  hosts: ubuntu_vms, noble_net_alma, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, pihole, motioneye, ansible, hosts
+  hosts: ubuntu_vms, noble_net_alma, evernode, xahau, unifi, nginx, servarr, pi4, pve_data, presearch, myst, ubuntu_docker, discord_bot, pihole, motioneye, bitwarden, ansible, hosts
   become: yes
   gather_facts: true
   ignore_unreachable: true
@@ -223,6 +223,16 @@
             comment: "MotionEye - {{ item.comment }}"
           loop: "{{ ufw_motioneye_ports }}"
           when: "'motioneye' in group_names"
+
+        # === Bitwarden Configuration ===
+        - name: Configure Bitwarden rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto | default('tcp') }}"
+            comment: "Bitwarden - {{ item.comment }}"
+          loop: "{{ ufw_bitwarden_ports }}"
+          when: "'bitwarden' in group_names"
 
         # === Smokeping Configuration ===
         - name: Configure Smokeping rules
