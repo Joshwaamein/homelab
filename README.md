@@ -22,6 +22,12 @@ homelab/
 │   ├── setup-ssh-key-on-remote-host.sh  # SSH key automation
 │   ├── deploy-zsh-setup.sh              # Zsh environment setup
 │   └── zabbixdeploy.sh                  # Zabbix deployment
+├── Unattended-Upgrades/ # Automated unattended upgrades configuration for Ubuntu
+│   ├── unattended-upgrades.sh  # Setup script
+│   └── README.md               # Documentation
+├── ubuntu-apps/         # Ubuntu application installation automation
+│   ├── ubuntu.sh        # App installation script
+│   └── README.md        # Documentation
 ├── semaphore/           # Semaphore UI configuration (not tracked)
 └── README.md           # This file
 ```
@@ -79,6 +85,42 @@ Complete infrastructure automation using Ansible with Semaphore UI.
 
 [→ Full Ansible Documentation](ansible/noble-semaphore/ANSIBLE-README.md)
 
+### Unattended Upgrades
+Automated configuration of unattended upgrades for Ubuntu servers, ensuring systems receive regular security patches and package updates without manual intervention.
+
+**Features:**
+- ✅ Installs and configures unattended-upgrades package
+- ✅ Automatic security and system package updates
+- ✅ Scheduled automatic reboots at 1 AM if required
+- ✅ Distribution upgrades and kernel updates excluded
+- ✅ Unused dependencies automatically removed
+- ✅ Daily cron job for upgrades
+
+**Quick setup:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Joshwaamein/homelab/main/Unattended-Upgrades/unattended-upgrades.sh | bash
+```
+
+[→ Full Unattended Upgrades Documentation](Unattended-Upgrades/README.md)
+
+### Ubuntu Apps
+Automated installation script for setting up a fresh Ubuntu desktop with all essential applications and tools, using apt and dpkg where possible.
+
+**Applications installed:**
+- ✅ Visual Studio Code, Brave Browser, Discord
+- ✅ VLC Media Player, Apache OpenOffice, Obsidian
+- ✅ OneDrive, Tailscale, Private Internet Access
+- ✅ Lutris, Steam
+- ✅ Ubuntu Extensions
+- ✅ Firmware and driver updates via fwupd and ubuntu-drivers
+
+**Quick setup:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Joshwaamein/homelab/main/ubuntu-apps/ubuntu.sh | bash
+```
+
+[→ Full Ubuntu Apps Documentation](ubuntu-apps/README.md)
+
 ### Semaphore
 Web-based UI for Ansible automation with:
 - Task scheduling
@@ -120,6 +162,8 @@ The following sensitive information is **excluded from git**:
 ### Component Documentation
 - **[Data Analytics Platform](data-analytics/README.md)** - Crypto & system monitoring
 - **[Ansible Automation](ansible/noble-semaphore/ANSIBLE-README.md)** - Complete Ansible guide
+- **[Unattended Upgrades](Unattended-Upgrades/README.md)** - Automated Ubuntu server updates
+- **[Ubuntu Apps](ubuntu-apps/README.md)** - Desktop application installer
 - **[Setup Scripts](ansible/noble-semaphore/setup.sh)** - Installation automation
 - **[Semaphore Config](ansible/noble-semaphore/configure-semaphore.py)** - Semaphore setup
 
@@ -216,6 +260,8 @@ This repository will grow to include:
 - **[Ansible Documentation](ansible/noble-semaphore/ANSIBLE-README.md)** - Full Ansible guide
 - **[Semaphore Setup](ansible/noble-semaphore/configure-semaphore.py)** - Auto-configure Semaphore
 - **[Setup Script](ansible/noble-semaphore/setup.sh)** - Install all dependencies
+- **[Unattended Upgrades](Unattended-Upgrades/README.md)** - Automated Ubuntu server updates
+- **[Ubuntu Apps](ubuntu-apps/README.md)** - Desktop application installer
 
 ## 📜 License
 
