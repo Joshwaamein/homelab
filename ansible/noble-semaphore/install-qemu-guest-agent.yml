@@ -14,10 +14,10 @@
     - name: Skip motioneye (LXC container - QEMU agent not applicable)
       debug:
         msg: "Skipping QEMU Guest Agent for motioneye - LXC container"
-      when: inventory_hostname == '100.88.27.41'
+      when: "'motioneye' in group_names"
 
     - meta: end_host
-      when: inventory_hostname == '100.88.27.41'
+      when: "'motioneye' in group_names"
 
     - name: Notify if skipping non-Debian/Ubuntu host
       debug:

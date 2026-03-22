@@ -37,7 +37,7 @@ A comprehensive monitoring and data collection system for tracking cryptocurrenc
 
 1. **Clone or navigate to the repository:**
    ```bash
-   cd /root/pve-data
+   cd /path/to/data-analytics
    ```
 
 2. **Set up environment variables:**
@@ -202,20 +202,20 @@ Set up cron jobs for regular data collection:
 crontab -e
 
 # Example: Run balance checks every hour
-0 * * * * cd /root/pve-data && python scripts/xrpl_check_balances.py >> xrpl_check_balances.py-output.log 2>&1
-0 * * * * cd /root/pve-data && python scripts/xahau_check_balances.py >> xahau_check_balances.py-output.log 2>&1
+0 * * * * cd /path/to/data-analytics && python scripts/xrpl_check_balances.py >> xrpl_check_balances.py-output.log 2>&1
+0 * * * * cd /path/to/data-analytics && python scripts/xahau_check_balances.py >> xahau_check_balances.py-output.log 2>&1
 
 # Example: Run Pi metrics every 5 minutes
-*/5 * * * * cd /root/pve-data && python scripts/pi_data_collector.py >> pi_data_collector.py-output.log 2>&1
+*/5 * * * * cd /path/to/data-analytics && python scripts/pi_data_collector.py >> pi_data_collector.py-output.log 2>&1
 
 # Example: Run speed test every 6 hours
-0 */6 * * * cd /root/pve-data && python scripts/pi4_speedtest-cli_collector.py >> pi4_speedtest-cli_collector.py-output.log 2>&1
+0 */6 * * * cd /path/to/data-analytics && python scripts/pi4_speedtest-cli_collector.py >> pi4_speedtest-cli_collector.py-output.log 2>&1
 ```
 
 ## Project Structure
 
 ```
-/root/pve-data/
+/path/to/data-analytics/
 ├── .env                    # Environment variables (DO NOT COMMIT)
 ├── .env.example           # Environment template
 ├── .gitignore             # Git ignore rules

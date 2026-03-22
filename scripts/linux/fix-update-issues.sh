@@ -48,9 +48,8 @@ ${GREEN}Issues:${NC}
     3 - Fix apt cache failures
 
 ${GREEN}Examples:${NC}
-    $0 1 100.102.244.34    # Fix Raspberry Pi
-    $0 3 100.117.78.117    # Fix pve-data apt cache
-    $0 3 100.89.11.64      # Fix pbs-t14 apt cache
+    $0 1 <raspberry-pi-ip>    # Fix Raspberry Pi
+    $0 3 <server-ip>          # Fix apt cache on server
 
 EOF
 }

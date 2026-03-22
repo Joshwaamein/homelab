@@ -179,7 +179,7 @@ Edit `group_vars/all/vars.yml` to customize:
 
 ```yaml
 # Zabbix Configuration
-zabbix_server_ip: "100.85.45.123"
+zabbix_server_ip: "{{ vault_zabbix_server_ip }}"
 zabbix_version: "7.0"
 
 # Timezone Configuration
@@ -231,14 +231,14 @@ Your inventory file defines hosts and groups:
 
 ```ini
 [ubuntu_vms]
-100.119.2.84        # server1
-100.117.7.21        # server2
+100.x.x.x          # server1
+100.x.x.x          # server2
 
 [evernode]
-100.119.2.84        # server1
+100.x.x.x          # server1
 
 [proxmox]
-100.96.81.60        # pve1
+100.x.x.x          # pve1
 ```
 
 ## 🛠️ Development Workflow

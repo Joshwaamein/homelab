@@ -420,8 +420,8 @@ WHERE metric = 'ping_response_time'
 
 ## 📁 Files Created
 
-- `/root/pve-data/sql/pi_metrics_views.sql` - Database views (already applied)
-- `/root/pve-data/dashboards/PiMetrics-Improved.json` - Improved dashboard template
+- `/path/to/data-analytics/sql/pi_metrics_views.sql` - Database views (already applied)
+- `/path/to/data-analytics/dashboards/PiMetrics-Improved.json` - Improved dashboard template
 - This file - Implementation documentation
 
 ## 🎓 Tips for Using the Dashboard
@@ -461,10 +461,10 @@ WHERE metric = 'ping_response_time'
 If you need to modify the views:
 ```bash
 # Edit the SQL file
-nano /root/pve-data/sql/pi_metrics_views.sql
+nano /path/to/data-analytics/sql/pi_metrics_views.sql
 
 # Reapply to database
-psql -U root -d environment_metrics -f /root/pve-data/sql/pi_metrics_views.sql
+psql -U root -d environment_metrics -f /path/to/data-analytics/sql/pi_metrics_views.sql
 ```
 
 ### Testing Queries

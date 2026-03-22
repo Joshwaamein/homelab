@@ -26,7 +26,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration (can be overridden by environment variables)
-ZABBIX_SERVER="${ZABBIX_SERVER:-100.85.45.123}"
+ZABBIX_SERVER="${ZABBIX_SERVER:-your_zabbix_server_ip}"
 ZABBIX_VERSION="${ZABBIX_VERSION:-7.2.4}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/zabbix}"
 CONFIG_FILE="/etc/zabbix/zabbix_agentd.conf"
