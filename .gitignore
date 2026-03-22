@@ -17,6 +17,11 @@ semaphore/
 # Logs
 *.log
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
 # SSH and temporary files
 *.sock
 *.swp

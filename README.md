@@ -18,16 +18,17 @@ homelab/
 │   ├── utils/           # Shared utility functions
 │   ├── setup.sh         # Automated database setup
 │   └── README.md        # Platform documentation
-├── scripts/             # Utility scripts for setup and deployment
-│   ├── setup-ssh-key-on-remote-host.sh  # SSH key automation
-│   ├── deploy-zsh-setup.sh              # Zsh environment setup
-│   └── zabbixdeploy.sh                  # Zabbix deployment
-├── Unattended-Upgrades/ # Automated unattended upgrades configuration for Ubuntu
-│   ├── unattended-upgrades.sh  # Setup script
-│   └── README.md               # Documentation
-├── ubuntu-apps/         # Ubuntu application installation automation
-│   ├── ubuntu.sh        # App installation script
-│   └── README.md        # Documentation
+├── scripts/             # Utility scripts organised by platform
+│   ├── linux/           # Linux/Ubuntu scripts
+│   │   ├── setup-ssh-key-on-remote-host.sh  # SSH key automation
+│   │   ├── deploy-zsh-setup.sh              # Zsh environment setup
+│   │   ├── zabbixdeploy.sh                  # Zabbix deployment
+│   │   ├── unattended-upgrades.sh           # Automated Ubuntu updates
+│   │   ├── ubuntu-apps.sh                   # Desktop app installer
+│   │   └── fix-update-issues.sh             # Fix apt update issues
+│   └── windows/         # Windows scripts
+│       ├── Update-AllApps.ps1               # Update all Windows apps
+│       └── zero_drive.py                    # Disk zeroing utility
 ├── semaphore/           # Semaphore UI configuration (not tracked)
 └── README.md           # This file
 ```
@@ -98,10 +99,10 @@ Automated configuration of unattended upgrades for Ubuntu servers, ensuring syst
 
 **Quick setup:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/Joshwaamein/homelab/main/Unattended-Upgrades/unattended-upgrades.sh | bash
+curl -sSL https://raw.githubusercontent.com/Joshwaamein/homelab/main/scripts/linux/unattended-upgrades.sh | bash
 ```
 
-[→ Full Unattended Upgrades Documentation](Unattended-Upgrades/README.md)
+[→ Full Scripts Documentation](scripts/linux/README.md)
 
 ### Ubuntu Apps
 Automated installation script for setting up a fresh Ubuntu desktop with all essential applications and tools, using apt and dpkg where possible.
@@ -116,10 +117,10 @@ Automated installation script for setting up a fresh Ubuntu desktop with all ess
 
 **Quick setup:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/Joshwaamein/homelab/main/ubuntu-apps/ubuntu.sh | bash
+curl -sSL https://raw.githubusercontent.com/Joshwaamein/homelab/main/scripts/linux/ubuntu-apps.sh | bash
 ```
 
-[→ Full Ubuntu Apps Documentation](ubuntu-apps/README.md)
+[→ Full Scripts Documentation](scripts/linux/README.md)
 
 ### Semaphore
 Web-based UI for Ansible automation with:
@@ -162,8 +163,8 @@ The following sensitive information is **excluded from git**:
 ### Component Documentation
 - **[Data Analytics Platform](data-analytics/README.md)** - Crypto & system monitoring
 - **[Ansible Automation](ansible/noble-semaphore/ANSIBLE-README.md)** - Complete Ansible guide
-- **[Unattended Upgrades](Unattended-Upgrades/README.md)** - Automated Ubuntu server updates
-- **[Ubuntu Apps](ubuntu-apps/README.md)** - Desktop application installer
+- **[Linux Scripts](scripts/linux/README.md)** - Linux/Ubuntu utility scripts
+- **[Windows Scripts](scripts/windows/README.md)** - Windows utility scripts
 - **[Setup Scripts](ansible/noble-semaphore/setup.sh)** - Installation automation
 - **[Semaphore Config](ansible/noble-semaphore/configure-semaphore.py)** - Semaphore setup
 
@@ -260,8 +261,8 @@ This repository will grow to include:
 - **[Ansible Documentation](ansible/noble-semaphore/ANSIBLE-README.md)** - Full Ansible guide
 - **[Semaphore Setup](ansible/noble-semaphore/configure-semaphore.py)** - Auto-configure Semaphore
 - **[Setup Script](ansible/noble-semaphore/setup.sh)** - Install all dependencies
-- **[Unattended Upgrades](Unattended-Upgrades/README.md)** - Automated Ubuntu server updates
-- **[Ubuntu Apps](ubuntu-apps/README.md)** - Desktop application installer
+- **[Linux Scripts](scripts/linux/README.md)** - Linux/Ubuntu utility scripts
+- **[Windows Scripts](scripts/windows/README.md)** - Windows utility scripts
 
 ## 📜 License
 
