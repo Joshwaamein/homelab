@@ -14,10 +14,10 @@
     - name: Skip motioneye (LXC container with Debian 13 Trixie compatibility issues)
       debug:
         msg: "Skipping fail2ban configuration for motioneye - LXC container"
-      when: inventory_hostname == 'REDACTED_TAILSCALE_IP'
+      when: "'motioneye' in group_names"
 
     - meta: end_host
-      when: inventory_hostname == 'REDACTED_TAILSCALE_IP'
+      when: "'motioneye' in group_names"
 
     - name: Notify if skipping non-Debian/Ubuntu host for config
       debug:

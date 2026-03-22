@@ -179,7 +179,7 @@ Edit `group_vars/all/vars.yml` to customize:
 
 ```yaml
 # Zabbix Configuration
-zabbix_server_ip: "REDACTED_TAILSCALE_IP"
+zabbix_server_ip: "{{ vault_zabbix_server_ip }}"
 zabbix_version: "7.0"
 
 # Timezone Configuration
@@ -231,14 +231,14 @@ Your inventory file defines hosts and groups:
 
 ```ini
 [ubuntu_vms]
-REDACTED_TAILSCALE_IP        # server1
-REDACTED_TAILSCALE_IP        # server2
+100.x.x.x          # server1
+100.x.x.x          # server2
 
 [evernode]
-REDACTED_TAILSCALE_IP        # server1
+100.x.x.x          # server1
 
 [proxmox]
-REDACTED_TAILSCALE_IP        # pve1
+100.x.x.x          # pve1
 ```
 
 ## 🛠️ Development Workflow

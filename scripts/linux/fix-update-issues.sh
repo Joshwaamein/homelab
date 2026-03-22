@@ -48,9 +48,8 @@ ${GREEN}Issues:${NC}
     3 - Fix apt cache failures
 
 ${GREEN}Examples:${NC}
-    $0 1 REDACTED_TAILSCALE_IP    # Fix Raspberry Pi
-    $0 3 REDACTED_TAILSCALE_IP    # Fix pve-data apt cache
-    $0 3 REDACTED_TAILSCALE_IP      # Fix pbs-t14 apt cache
+    $0 1 <raspberry-pi-ip>    # Fix Raspberry Pi
+    $0 3 <server-ip>          # Fix apt cache on server
 
 EOF
 }
