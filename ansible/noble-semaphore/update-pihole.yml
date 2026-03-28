@@ -1,0 +1,30 @@
+---
+- name: Update Pi-hole to latest version
+  hosts: pihole
+  become: true
+  gather_facts: true
+  ignore_unreachable: true
+
+  tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname }}"
+
+    - name: Run pihole update
+      command: pihole -up
+      register: pihole_update
+      changed_when: "'update available' in pihole_update.stdout"
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Show update output
+      debug:
+        msg: "{{ pihole_update.stdout_lines }}"
+
+    - name: Show Pi-hole version
+      command: pihole -v
+      register: pihole_version
+
+    - name: Display version info
+      debug:
+        msg: "{{ pihole_version.stdout_lines }}"
