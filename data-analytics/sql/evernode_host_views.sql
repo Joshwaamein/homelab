@@ -18,7 +18,7 @@ SELECT DISTINCT ON (domain)
     version,
     execution_ts
 FROM evernode_hosts
-WHERE domain LIKE '%REDACTED_DOMAIN%'
+WHERE domain LIKE '%YOUR_DOMAIN%'
 ORDER BY domain, execution_ts DESC;
 
 -- Host utilization metrics
@@ -43,7 +43,7 @@ SELECT
     hostreputation,
     activeinstances
 FROM evernode_hosts
-WHERE domain LIKE '%REDACTED_DOMAIN%'
+WHERE domain LIKE '%YOUR_DOMAIN%'
     AND execution_ts > NOW() - INTERVAL '30 days'
 ORDER BY execution_ts DESC;
 
@@ -82,7 +82,7 @@ SELECT
     maxinstances,
     ROUND((activeinstances::numeric / NULLIF(maxinstances, 0)::numeric * 100), 2) as utilization_pct
 FROM evernode_hosts
-WHERE domain LIKE '%REDACTED_DOMAIN%'
+WHERE domain LIKE '%YOUR_DOMAIN%'
     AND execution_ts > NOW() - INTERVAL '30 days'
 ORDER BY execution_ts DESC;
 

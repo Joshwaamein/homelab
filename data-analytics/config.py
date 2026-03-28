@@ -92,7 +92,7 @@ class BlockchainConfig:
 # Evernode Configuration
 class EvernodeConfig:
     """Evernode API settings"""
-    API_URL = os.getenv('EVERNODE_API_URL', 'https://api.evernode.network/registry/hosts/REDACTED_DOMAIN')
+    API_URL = os.getenv('EVERNODE_API_URL', 'https://api.evernode.network/registry/hosts/YOUR_DOMAIN')
 
 
 # Raspberry Pi Configuration
