@@ -21,3 +21,7 @@ unattended_upgrades_vm_update_time: "04:00:00"
 unattended_upgrades_pve_upgrade_time: "06:00:00"
 unattended_upgrades_pve_reboot_time: "06:30"
 unattended_upgrades_pve_update_time: "05:00:00"
+
+# Zabbix Configuration
+zabbix_server_ip: "{{ vault_zabbix_server_ip }}"
+zabbix_version: "7.0"
