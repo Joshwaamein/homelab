@@ -8,9 +8,18 @@ This repository contains scripts, configurations, and automation tools for manag
 homelab/
 ├── ansible/              # Ansible automation and playbooks
 │   └── noble-semaphore/  # Production Ansible configuration
-│       ├── playbooks/    # Infrastructure automation playbooks
-│       ├── setup.sh      # One-click Ansible setup
-│       └── configure-semaphore.py  # Semaphore auto-config
+│       ├── group_vars/
+│       │   └── all/
+│       │       ├── vars.yml              # Non-secret variables
+│       │       ├── vault.yml             # 🔒 Secrets (gitignored)
+│       │       └── vault.yml.example     # Template for vault.yml
+│       ├── configure-unattended-upgrades.yml  # Auto-updates & email alerts
+│       ├── playbook-update-no-reboot.yml      # Manual system updates
+│       ├── playbook-update-reboot.yml         # System updates with reboot
+│       ├── secure_ssh_configuration.yml       # SSH hardening
+│       ├── config-ufw.yml                     # Firewall rules
+│       ├── setup.sh                           # One-click Ansible setup
+│       └── configure-semaphore.py             # Semaphore auto-config
 ├── data-analytics/      # Multi-chain crypto & system and environment monitoring platform
 │   ├── scripts/         # Data collection scripts (XRPL, Xahau, Ethereum, Prometheus)
 │   ├── sql/             # PostgreSQL database schemas
@@ -72,17 +81,19 @@ Complete infrastructure automation using Ansible with Semaphore UI.
 
 **Features:**
 - ✅ 10+ production-ready playbooks
-- ✅ Automated system updates
+- ✅ Automated system updates with email alerts
+- ✅ **Unattended upgrades** — daily auto-updates + auto-reboot across 34 hosts
 - ✅ Security hardening (SSH, UFW, Fail2ban)
 - ✅ Monitoring (Zabbix agent deployment)
 - ✅ Semaphore web UI integration
-- ✅ Automatic scheduling for routine tasks
+- ✅ Secrets managed via `group_vars/all/vault.yml` (gitignored)
 
 **Key Playbooks:**
-- System Updates (with/without reboot)
-- Security configuration (SSH, firewall)
-- Monitoring agent deployment
-- User management and reporting
+- `configure-unattended-upgrades.yml` — Daily auto-updates + Brevo email alerts (5 AM VMs / 6 AM Proxmox)
+- `playbook-update-no-reboot.yml` — Manual updates without reboot
+- `playbook-update-reboot.yml` — Manual updates with reboot
+- `secure_ssh_configuration.yml` — SSH hardening
+- `config-ufw.yml` — Firewall rules
 
 [→ Full Ansible Documentation](ansible/noble-semaphore/ANSIBLE-README.md)
 
@@ -132,29 +143,50 @@ Web-based UI for Ansible automation with:
 ## 🖥️ Infrastructure Overview
 
 ### Managed Systems
-- **Ubuntu/Debian VMs** - Various infrastructure services
-- **Proxmox Hosts** - Virtualization platform
-- **Proxmox Backup Server** - Backup infrastructure
-- **Evernode Instances** - XRPL nodes
-- **Application Servers** - Servarrr, Pi-hole, UniFi, etc.
+- **Ubuntu/Debian VMs** (31 hosts) — Various infrastructure services
+- **Proxmox Hypervisors** (pve1, pve2, pve3) — Virtualization platform
+- **Proxmox Backup Servers** (pbs1, pbs2, pbs3, pbs-t14) — Backup infrastructure
+- **Evernode Instances** — XRPL nodes
+- **Application Servers** — Servarrr, Pi-hole, UniFi, Bitwarden, Ghost, etc.
 
 ### Network
-- **Tailscale VPN** - Secure remote access
-- **Private subnet** - 100.x.x.x range
-- **Zabbix monitoring** - Infrastructure health monitoring
+- **Tailscale VPN** — Secure remote access (100.x.x.x range)
+- **Zabbix monitoring** — Infrastructure health monitoring
+- **Brevo SMTP** — Email alerts from unattended-upgrades
+
+### Auto-Update Schedule
+| Time | Action | Hosts |
+|------|--------|-------|
+| 04:00 | `apt-get update` | All VMs |
+| 05:00 | `apt-get upgrade` | All VMs |
+| 05:30 | Auto-reboot if needed | All VMs |
+| 05:00 | `apt-get update` | pve1, pve2, pve3 |
+| 06:00 | `apt-get upgrade` | pve1, pve2, pve3 |
+| 06:30 | Auto-reboot if needed | pve1, pve2, pve3 |
+
+> Proxmox hypervisors update after VMs to ensure guests reboot before the host.
 
 ## 🔐 Security
 
 ### Protected Information
 The following sensitive information is **excluded from git**:
 - 🔒 Real server IPs and hostnames (inventory files)
-- 🔒 Credentials and API keys (vault.yml)
+- 🔒 Credentials and API keys (`group_vars/all/vault.yml`)
 - 🔒 User data and reports
 - 🔒 Semaphore runtime configuration
 
+### Secret Management
+Secrets are stored in `group_vars/all/vault.yml` (gitignored, chmod 600).
+A `vault.yml.example` template is provided for onboarding.
+
+To add a new secret:
+1. Copy `vault.yml.example` → `vault.yml`
+2. Add your values
+3. Never commit vault.yml (it's in `.gitignore`)
+
 ### What's Safe to Share
 - ✅ Playbook templates and scripts
-- ✅ Configuration examples
+- ✅ Configuration examples (`vault.yml.example`)
 - ✅ Documentation
 - ✅ Automation tools
 
@@ -169,11 +201,11 @@ The following sensitive information is **excluded from git**:
 - **[Semaphore Config](ansible/noble-semaphore/configure-semaphore.py)** - Semaphore setup
 
 ### Key Features
-- **Automated Updates** - Weekly system updates
-- **Security Hardening** - SSH, firewall, fail2ban
-- **Monitoring** - Zabbix agent deployment
-- **Backup Ready** - All configurations version controlled
-- **Scheduled Tasks** - Automated maintenance via Semaphore
+- **Automated Daily Updates** — unattended-upgrades on all 34 hosts with email via Brevo
+- **Security Hardening** — SSH, firewall, fail2ban
+- **Monitoring** — Zabbix agent deployment
+- **Backup Ready** — All configurations version controlled
+- **Scheduled Tasks** — Automated maintenance via Semaphore
 
 ## 🚀 Getting Started
 
@@ -203,22 +235,34 @@ The following sensitive information is **excluded from git**:
    nano inventory  # Add your hosts
    ```
 
-4. **(Optional) Configure Semaphore:**
+4. **Configure secrets:**
+   ```bash
+   cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+   nano group_vars/all/vault.yml  # Add SMTP key etc.
+   chmod 600 group_vars/all/vault.yml
+   ```
+
+5. **(Optional) Configure Semaphore:**
    ```bash
    ./configure-semaphore.py
    ```
 
-5. **Run your first playbook:**
+6. **Deploy unattended-upgrades to all hosts:**
+   ```bash
+   ansible-playbook configure-unattended-upgrades.yml
+   ```
+
+7. **Run a manual update:**
    ```bash
    ansible-playbook playbook-update-no-reboot.yml
    ```
 
 ## 🔧 Maintenance
 
-### Regular Tasks (Automated)
-- **Weekly:** System updates (Sundays 2 AM)
-- **Monthly:** System updates with reboot (1st of month, 3 AM)
-- **Weekly:** User audit reports (Mondays midnight)
+### Regular Tasks (Automated via unattended-upgrades)
+- **Daily 05:00** — System updates on all VMs (auto-reboot 05:30)
+- **Daily 06:00** — System updates on Proxmox hosts (auto-reboot 06:30)
+- **Email alerts** — Sent via Brevo on any package changes
 
 ### Manual Tasks
 - Security configuration changes
@@ -270,8 +314,9 @@ Personal homelab configuration - Use at your own risk
 
 ---
 
-**Repository:** https://github.com/Joshwaamein/homelab  
-**Purpose:** Infrastructure automation and documentation  
+**Repository:** https://github.com/Joshwaamein/homelab
+**Purpose:** Infrastructure automation and documentation
 **Status:** Active development
+
 
 💡 **Tip:** Start with the [Ansible documentation](ansible/noble-semaphore/ANSIBLE-README.md) for detailed setup instructions.

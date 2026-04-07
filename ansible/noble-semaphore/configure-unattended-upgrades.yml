@@ -1,0 +1,306 @@
+---
+- name: Configure unattended-upgrades on all Debian/Ubuntu hosts
+  hosts: ubuntu_vms, pbs, hosts
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tags: unattended-upgrades,auto-updates
+
+  vars:
+    # Determine if this host is a Proxmox hypervisor
+    is_proxmox_host: "{{ inventory_hostname in groups['proxmox'] }}"
+
+  tasks:
+    - name: Print hostname
+      debug:
+        msg: "Hostname is {{ ansible_hostname | default(inventory_hostname) }}"
+
+    - name: Notify if host facts are missing
+      debug:
+        msg: "Skipping host {{ inventory_hostname }} because facts are unavailable"
+      when: ansible_os_family is not defined
+      changed_when: false
+
+    - name: Skip non-Debian/Ubuntu hosts
+      debug:
+        msg: "Skipping non-Debian/Ubuntu host: {{ inventory_hostname }}"
+      when: ansible_os_family is defined and ansible_os_family != "Debian"
+      changed_when: false
+
+    - name: End play for non-Debian/Ubuntu hosts
+      meta: end_host
+      when: ansible_os_family is not defined or ansible_os_family != "Debian"
+
+    # -------------------------------------------------------
+    # Install packages
+    # -------------------------------------------------------
+
+    - name: Install unattended-upgrades and msmtp
+      apt:
+        name:
+          - unattended-upgrades
+          - apt-listchanges
+          - msmtp
+          - msmtp-mta
+          - mailutils
+        state: present
+        update_cache: yes
+        cache_valid_time: 3600
+      tags: install
+
+    # -------------------------------------------------------
+    # Configure msmtp (SMTP relay via Brevo)
+    # -------------------------------------------------------
+
+    - name: Configure msmtp for Brevo SMTP relay
+      no_log: true
+      copy:
+        dest: /etc/msmtprc
+        owner: root
+        group: root
+        mode: '0600'
+        content: |
+          defaults
+          auth           on
+          tls            on
+          tls_trust_file /etc/ssl/certs/ca-certificates.crt
+          logfile        /var/log/msmtp.log
+
+          account        brevo
+          host           {{ unattended_upgrades_smtp_host }}
+          port           {{ unattended_upgrades_smtp_port }}
+          from           {{ unattended_upgrades_smtp_from }}
+          user           {{ unattended_upgrades_smtp_user }}
+          password       {{ unattended_upgrades_smtp_password }}
+
+          account default : brevo
+      tags: msmtp
+
+    - name: Set system mailname
+      copy:
+        dest: /etc/mailname
+        content: "{{ unattended_upgrades_mailname }}\n"
+        owner: root
+        group: root
+        mode: '0644'
+      tags: msmtp
+
+    - name: Ensure msmtp log file exists with correct permissions
+      file:
+        path: /var/log/msmtp.log
+        state: touch
+        owner: root
+        group: root
+        mode: '0640'
+        modification_time: preserve
+        access_time: preserve
+      tags: msmtp
+
+    # -------------------------------------------------------
+    # Configure unattended-upgrades (VM hosts)
+    # -------------------------------------------------------
+
+    - name: Configure 50unattended-upgrades (VM hosts)
+      copy:
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Unattended-Upgrade::Origins-Pattern {
+              "origin=Debian,codename=${distro_codename},label=Debian";
+              "origin=Debian,codename=${distro_codename},label=Debian-Security";
+              "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu";
+              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu-Security";
+              "origin=Ubuntu,codename=${distro_codename}-security,label=Ubuntu-Security";
+          };
+          Unattended-Upgrade::Package-Blacklist {
+          };
+          Unattended-Upgrade::DevRelease "false";
+          Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+          Unattended-Upgrade::MinimalSteps "true";
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";
+          Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+          Unattended-Upgrade::Automatic-Reboot "true";
+          Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+          Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_upgrades_vm_reboot_time }}";
+          Unattended-Upgrade::Mail "{{ unattended_upgrades_email }}";
+          Unattended-Upgrade::MailReport "{{ unattended_upgrades_mail_report }}";
+          Unattended-Upgrade::SyslogEnable "true";
+      when: not is_proxmox_host | bool
+      tags: config
+
+    # -------------------------------------------------------
+    # Configure unattended-upgrades (Proxmox hypervisors)
+    # -------------------------------------------------------
+
+    - name: Configure 50unattended-upgrades (Proxmox hypervisors)
+      copy:
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          Unattended-Upgrade::Origins-Pattern {
+              "origin=Debian,codename=${distro_codename},label=Debian";
+              "origin=Debian,codename=${distro_codename},label=Debian-Security";
+              "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu";
+              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu-Security";
+              "origin=Ubuntu,codename=${distro_codename}-security,label=Ubuntu-Security";
+          };
+          Unattended-Upgrade::Package-Blacklist {
+          };
+          Unattended-Upgrade::DevRelease "false";
+          Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+          Unattended-Upgrade::MinimalSteps "true";
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";
+          Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+          Unattended-Upgrade::Automatic-Reboot "true";
+          Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+          Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_upgrades_pve_reboot_time }}";
+          Unattended-Upgrade::Mail "{{ unattended_upgrades_email }}";
+          Unattended-Upgrade::MailReport "{{ unattended_upgrades_mail_report }}";
+          Unattended-Upgrade::SyslogEnable "true";
+      when: is_proxmox_host | bool
+      tags: config
+
+    # -------------------------------------------------------
+    # Configure APT periodic
+    # -------------------------------------------------------
+
+    - name: Configure 20auto-upgrades (APT periodic)
+      copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          APT::Periodic::AutocleanInterval "7";
+      tags: config
+
+    # -------------------------------------------------------
+    # Systemd timer overrides — VM hosts (upgrade at 05:00)
+    # -------------------------------------------------------
+
+    - name: Create apt-daily-upgrade timer override directory
+      file:
+        path: /etc/systemd/system/apt-daily-upgrade.timer.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      tags: timer
+
+    - name: Create apt-daily timer override directory
+      file:
+        path: /etc/systemd/system/apt-daily.timer.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      tags: timer
+
+    - name: Override apt-daily-upgrade timer (VM hosts — 05:00)
+      copy:
+        dest: /etc/systemd/system/apt-daily-upgrade.timer.d/override.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Timer]
+          OnCalendar=
+          OnCalendar=*-*-* {{ unattended_upgrades_vm_upgrade_time }}
+          RandomizedDelaySec=0
+      when: not is_proxmox_host | bool
+      notify: Reload systemd
+      tags: timer
+
+    - name: Override apt-daily timer (VM hosts — 04:00)
+      copy:
+        dest: /etc/systemd/system/apt-daily.timer.d/override.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Timer]
+          OnCalendar=
+          OnCalendar=*-*-* {{ unattended_upgrades_vm_update_time }}
+          RandomizedDelaySec=0
+      when: not is_proxmox_host | bool
+      notify: Reload systemd
+      tags: timer
+
+    - name: Override apt-daily-upgrade timer (Proxmox hosts — 06:00)
+      copy:
+        dest: /etc/systemd/system/apt-daily-upgrade.timer.d/override.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Timer]
+          OnCalendar=
+          OnCalendar=*-*-* {{ unattended_upgrades_pve_upgrade_time }}
+          RandomizedDelaySec=0
+      when: is_proxmox_host | bool
+      notify: Reload systemd
+      tags: timer
+
+    - name: Override apt-daily timer (Proxmox hosts — 05:00)
+      copy:
+        dest: /etc/systemd/system/apt-daily.timer.d/override.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Timer]
+          OnCalendar=
+          OnCalendar=*-*-* {{ unattended_upgrades_pve_update_time }}
+          RandomizedDelaySec=0
+      when: is_proxmox_host | bool
+      notify: Reload systemd
+      tags: timer
+
+    - name: Enable and start apt-daily and apt-daily-upgrade timers
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      loop:
+        - apt-daily.timer
+        - apt-daily-upgrade.timer
+      tags: timer
+
+    # -------------------------------------------------------
+    # Verification
+    # -------------------------------------------------------
+
+    - name: Show active timer schedule
+      command: systemctl list-timers apt-daily* --no-pager
+      register: timer_output
+      changed_when: false
+      tags: verify
+
+    - name: Print timer schedule
+      debug:
+        msg: "{{ timer_output.stdout_lines }}"
+      tags: verify
+
+    - name: Print configuration summary
+      debug:
+        msg: >
+          Configured {{ ansible_hostname }} —
+          type: {{ 'Proxmox hypervisor' if is_proxmox_host | bool else 'VM/standalone' }} —
+          upgrade: {{ unattended_upgrades_pve_upgrade_time if is_proxmox_host | bool else unattended_upgrades_vm_upgrade_time }} —
+          reboot: {{ unattended_upgrades_pve_reboot_time if is_proxmox_host | bool else unattended_upgrades_vm_reboot_time }}
+      changed_when: false
+      tags: verify
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes

@@ -1,23 +1,23 @@
 ---
-# Common variables for all hosts
+# /opt/ansible/noble-semaphore/group_vars/all/vars.yml
+# Non-secret variables for unattended-upgrades configuration
+# Secrets (SMTP key) are in group_vars/all/vault.yml (not committed to git)
 
-# Zabbix Configuration
-zabbix_server_ip: "{{ vault_zabbix_server_ip }}"
-zabbix_version: "7.0"
+# Email configuration
+unattended_upgrades_email: "unattended-upgrades@baggerzzz.online"
+unattended_upgrades_mail_report: "on-change"
+unattended_upgrades_smtp_host: "smtp-relay.brevo.com"
+unattended_upgrades_smtp_port: 587
+unattended_upgrades_smtp_user: "joshuamein@googlemail.com"
+unattended_upgrades_smtp_from: "unattended-upgrades@baggerzzz.online"
+unattended_upgrades_mailname: "baggerzzz.online"
 
-# Timezone Configuration
-timezone: "Europe/London"
+# VM schedule (all hosts except proxmox group)
+unattended_upgrades_vm_upgrade_time: "05:00:00"
+unattended_upgrades_vm_reboot_time: "05:30"
+unattended_upgrades_vm_update_time: "04:00:00"
 
-# SSH Configuration
-ssh_permit_root_login: "prohibit-password"
-ssh_password_authentication: false
-ssh_permit_empty_passwords: false
-ssh_x11_forwarding: false
-ssh_client_alive_interval: 300
-ssh_client_alive_count_max: 2
-
-# Fail2ban Configuration
-fail2ban_enabled: true
-
-# System Updates
-update_cache_valid_time: 3600
+# Proxmox host schedule (runs AFTER VMs reboot)
+unattended_upgrades_pve_upgrade_time: "06:00:00"
+unattended_upgrades_pve_reboot_time: "06:30"
+unattended_upgrades_pve_update_time: "05:00:00"

@@ -1,0 +1,6 @@
+# Secrets - never commit these
+group_vars/all/vault.yml
+*.vault
+*.secret
+.vault_pass
+vault_pass.txt
