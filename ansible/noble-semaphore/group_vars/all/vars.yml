@@ -4,13 +4,13 @@
 # Secrets (SMTP key) are in group_vars/all/vault.yml (not committed to git)
 
 # Email configuration
-unattended_upgrades_email: "unattended-upgrades@baggerzzz.online"
+unattended_upgrades_email: ""
 unattended_upgrades_mail_report: "on-change"
-unattended_upgrades_smtp_host: "smtp-relay.brevo.com"
+unattended_upgrades_smtp_host: ""
 unattended_upgrades_smtp_port: 587
-unattended_upgrades_smtp_user: "joshuamein@googlemail.com"
-unattended_upgrades_smtp_from: "unattended-upgrades@baggerzzz.online"
-unattended_upgrades_mailname: "baggerzzz.online"
+unattended_upgrades_smtp_user: ""
+unattended_upgrades_smtp_from: ""
+unattended_upgrades_mailname: ""
 
 # VM schedule (all hosts except proxmox group)
 unattended_upgrades_vm_upgrade_time: "05:00:00"
