@@ -127,6 +127,9 @@
           Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_upgrades_vm_reboot_time }}";
           Unattended-Upgrade::Mail "{{ unattended_upgrades_email }}";
           Unattended-Upgrade::MailReport "{{ unattended_upgrades_mail_report }}";
+          // Sender added 2026-05-21: UU defaults the From: header to "root"
+          // when this is unset, which Gmail drops (DMARC alignment fails).
+          Unattended-Upgrade::Sender "{{ unattended_upgrades_smtp_from }}";
           Unattended-Upgrade::SyslogEnable "true";
       when: not is_proxmox_host | bool
       tags: config
@@ -162,6 +165,9 @@
           Unattended-Upgrade::Automatic-Reboot-Time "{{ unattended_upgrades_pve_reboot_time }}";
           Unattended-Upgrade::Mail "{{ unattended_upgrades_email }}";
           Unattended-Upgrade::MailReport "{{ unattended_upgrades_mail_report }}";
+          // Sender added 2026-05-21: UU defaults the From: header to "root"
+          // when this is unset, which Gmail drops (DMARC alignment fails).
+          Unattended-Upgrade::Sender "{{ unattended_upgrades_smtp_from }}";
           Unattended-Upgrade::SyslogEnable "true";
       when: is_proxmox_host | bool
       tags: config
