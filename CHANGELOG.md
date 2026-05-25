@@ -1,5 +1,32 @@
 # Changelog
 
+## [2026-05-25] - PBS Hosts Joined Unattended-Upgrades
+
+### Added
+- **`group_vars/pbs.yml`** — `ansible_become: false` for the `[pbs]` inventory group.
+  - Proxmox Backup Server hosts run Debian 13 (trixie) without `sudo` installed.
+  - Ansible already authenticates as `root` over SSH on these hosts, so privilege
+    escalation is unnecessary and was the failure mode.
+
+### Fixed
+- `configure-unattended-upgrades.yml` previously failed on the 3 PBS hosts with
+  `module_stderr: /bin/sh: 1: sudo: not found` (rc=127). With the new group_var
+  the playbook is fully idempotent across the PBS group.
+
+### Verified
+- `ansible-playbook -i inventory configure-unattended-upgrades.yml --limit pbs`
+  returns `ok=16 changed=0` across all 3 reachable PBS hosts.
+- Fleet audit (`ansible all -m shell -a "..."`) confirms 27/27 reachable
+  Debian/Ubuntu hosts have an active `apt-daily-upgrade.timer` and the
+  configured 50unattended-upgrades file present.
+
+### Out of Scope (deferred)
+- 3 hosts unreachable on Tailscale (one Proxmox node, one Ubuntu test VM, one
+  PBS laptop). UU coverage will pick up automatically on next playbook run
+  once SSH is restored. Tracked in Vikunja `homelab-pointers` task list.
+
+---
+
 ## [2026-04-08] - Fleet-Wide Unattended Upgrades + APT Repair
 
 ### Added

@@ -203,6 +203,46 @@ Unattended-Upgrade::Automatic-Reboot "false";
 5. **Backup before major updates:** Consider snapshots for critical systems
 6. **Timing coordination:** Ensure 12-hour gap between playbook and control node reboot
 
+## PBS Hosts (Debian Trixie, no sudo)
+
+Proxmox Backup Server hosts ship without `sudo` and Ansible already
+authenticates as `root` over SSH. Without intervention,
+`configure-unattended-upgrades.yml` fails on the `[pbs]` group with:
+
+```
+module_stderr: /bin/sh: 1: sudo: not found
+rc: 127
+```
+
+### Fix
+
+Add a group-scoped `ansible_become` override:
+
+```yaml
+# group_vars/pbs.yml
+---
+ansible_become: false
+```
+
+After this, the existing playbook is fully idempotent on PBS hosts.
+
+### Verification
+
+```bash
+ansible-playbook -i inventory configure-unattended-upgrades.yml --limit pbs
+```
+
+Expect `ok=N changed=0` once the timers, msmtp config and
+`/etc/apt/apt.conf.d/50unattended-upgrades` are all in place.
+
+### Why not just install sudo on PBS?
+
+Standalone PBS appliances are deliberately minimal. Adding `sudo`
+introduces another package + config surface (sudoers, auth log)
+for no operational benefit when SSH already lands as root via
+the dedicated ansible key. Disabling become for the group keeps
+PBS lean and matches how it ships from upstream.
+
 ## Additional Resources
 
 - [Ubuntu Unattended Upgrades Documentation](https://help.ubuntu.com/community/AutomaticSecurityUpdates)
