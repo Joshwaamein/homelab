@@ -1,0 +1,4 @@
+---
+# PBS hosts run as root over SSH and ship without sudo on Debian 13 (trixie).
+# Disable privilege escalation so ansible does not try to invoke sudo.
+ansible_become: false
