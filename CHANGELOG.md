@@ -34,7 +34,7 @@
   - Deployed `unattended-upgrades` + `msmtp` to all 34 reachable Linux hosts via Ansible
   - All updates (security + regular) enabled on all Ubuntu 24.04 and Debian 13 hosts
   - Auto-reboot enabled: VMs at 05:30, Proxmox hypervisors at 06:30
-  - Email alerts via Brevo SMTP to `unattended-upgrades@baggerzzz.online` on any change
+  - Email alerts via Brevo SMTP to `unattended-upgrades@example.org` on any change
 
 - **Ansible Playbook: `configure-unattended-upgrades.yml`**
   - Idempotent playbook for full unattended-upgrades configuration
@@ -48,20 +48,20 @@
   - `group_vars/all/vault.yml.example` — onboarding template
   - `.gitignore` added to noble-semaphore directory
 
-- **APT Repair: pve-myst (100.119.135.11)**
+- **APT Repair: VM (`<vm-host>`, 100.x.x.x)**
   - Diagnosed dpkg SIGPIPE bug caused by 22.04→24.04 usrmerge `/lib` diversion
   - Manually extracted and installed 6 stuck packages (netplan, libfwupd2, lshw)
   - Updated dpkg status database via Python script
   - `libnetplan1` held with `apt-mark hold` pending upstream dpkg fix
 
-- **motioneye (100.88.27.41)**
+- **Camera VM (`<vm-host>`, 100.x.x.x)**
   - Fixed recurring 30s `apt-daily` timeout caused by `systemd-networkd-wait-online`
   - Added `APT::Periodic::WaitOnline "false"` to `/etc/apt/apt.conf.d/99nowaitonline`
 
 ### Changed
 - **Update Schedule (all hosts)**
   - VMs: `apt-get update` at 04:00, upgrade at 05:00, reboot at 05:30
-  - Proxmox (pve1/2/3): `apt-get update` at 05:00, upgrade at 06:00, reboot at 06:30
+  - Proxmox hypervisors: `apt-get update` at 05:00, upgrade at 06:00, reboot at 06:30
   - 1-hour gap ensures VMs complete reboot before hypervisors restart
 
 ### Files Added/Modified
@@ -73,8 +73,8 @@
 
 ### Infrastructure State
 - **Configured:** 34 hosts
-- **Offline/skipped:** 1 host (100.96.238.4 — unreachable)
-- **Held packages:** `libnetplan1` on pve-myst (safe, files at correct version)
+- **Offline/skipped:** 1 host (100.x.x.x, unreachable)
+- **Held packages:** `libnetplan1` on the affected VM (safe, files at correct version)
 
 ---
 
