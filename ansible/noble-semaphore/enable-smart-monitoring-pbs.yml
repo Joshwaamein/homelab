@@ -1,0 +1,101 @@
+---
+# Enable SMART monitoring on Proxmox Backup Server hosts.
+#
+# The Zabbix agent 2 SMART plugin needs:
+#   1. smartmontools (the smartctl binary)
+#   2. sudo (the plugin shells out to `sudo smartctl --scan -j` because
+#      smartctl needs root to read raw ATA/NVMe registers)
+#   3. A sudoers drop-in that lets the zabbix user run smartctl with
+#      no password
+#
+# PBS hosts ship lean: neither sudo nor smartmontools are installed by
+# default. This playbook idempotently adds both and the sudoers entry.
+#
+# After it runs, the SMART by Zabbix agent 2 template (already attached
+# to pbs1/pbs2/pbs3 as of 2026-05-27) will discover disks on the next
+# LLD pass (default ~1h, can be forced from the Zabbix UI).
+#
+# Vikunja: closes part of task 34 ("Get Zabbix to monitor SMART on PVE
+# hosts"). The PVE side was already working; this fixes the PBS gap.
+
+- name: Enable SMART monitoring for Zabbix on PBS hosts
+  hosts: pbs
+  gather_facts: true
+  ignore_unreachable: true
+  tags: zabbix, smart, monitoring, pbs
+
+  tasks:
+    - name: Print deployment banner
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════"
+          - "Enable SMART monitoring (Zabbix agent 2)"
+          - "Host: {{ ansible_hostname }}"
+          - "═══════════════════════════════════════════"
+
+    # ============================================
+    # PHASE 1: INSTALL DEPENDENCIES
+    # ============================================
+
+    - name: Install sudo and smartmontools
+      ansible.builtin.apt:
+        name:
+          - sudo
+          - smartmontools
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    # ============================================
+    # PHASE 2: GRANT ZABBIX USER NOPASSWD SMARTCTL
+    # ============================================
+
+    - name: Drop in /etc/sudoers.d/zabbix-smartctl
+      ansible.builtin.copy:
+        # Same shape as the existing file on pve1/pve2/pve3.
+        # Lets only the zabbix user run smartctl, nothing else.
+        content: |
+          # Managed by Ansible (enable-smart-monitoring-pbs.yml).
+          # Required by the Zabbix agent 2 SMART plugin to read raw
+          # ATA/NVMe data without a password prompt.
+          zabbix ALL=(ALL) NOPASSWD: /usr/sbin/smartctl
+        dest: /etc/sudoers.d/zabbix-smartctl
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    # ============================================
+    # PHASE 3: BOUNCE THE AGENT
+    # ============================================
+
+    - name: Restart zabbix-agent2 so the SMART plugin re-scans
+      ansible.builtin.systemd:
+        name: zabbix-agent2
+        state: restarted
+        enabled: true
+
+    # ============================================
+    # PHASE 4: VERIFY
+    # ============================================
+
+    - name: Verify smartctl is callable as the zabbix user via sudo
+      # Runs as root; -u zabbix forces the same path the plugin takes.
+      ansible.builtin.command:
+        argv:
+          - sudo
+          - -u
+          - zabbix
+          - sudo
+          - -n
+          - /usr/sbin/smartctl
+          - --scan
+          - -j
+      register: smartctl_scan
+      changed_when: false
+      failed_when: smartctl_scan.rc != 0
+
+    - name: Show discovered devices
+      ansible.builtin.debug:
+        msg: "{{ smartctl_scan.stdout | from_json | json_query('devices[*].name') }}"
+      when: smartctl_scan.stdout | length > 0
