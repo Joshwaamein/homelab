@@ -1,0 +1,33 @@
+---
+# 2026-06-07: Origins-Pattern entries that apply EVERYWHERE the agent runs.
+# Lifted from the canonical /etc/apt/apt.conf.d/50unattended-upgrades on
+# the ansible VM, which had become the de-facto fleet template but was
+# never source-controlled into the playbook.
+#
+# Universal-tier rationale:
+# - Tailscale: every host runs tailscaled. New CVEs in the daemon have
+#   shipped within hours via this repo. Auto-patching is unanimously safe.
+# - Zabbix: every host except the 5 outliers (bill-ubuntu, discord-bot,
+#   motioneye, pdm, pve-presearch) has zabbix-agent2 installed and the
+#   repo configured. The 5 outliers don't have the repo so the line
+#   is a no-op there. Auto-patching is safe (agent-only, no server-side
+#   data mutation).
+#
+# Per-group / per-host additions (Docker, Mysterium, Proxmox, Netdata,
+# nginx upstream, InfluxDB, timescaledb) are layered on via group_vars
+# and host_vars files alongside this one. See the playbook's
+# Origins-Pattern Jinja loop for assembly.
+
+unattended_upgrades_origins_universal:
+  - "origin=Debian,codename=${distro_codename},label=Debian"
+  - "origin=Debian,codename=${distro_codename},label=Debian-Security"
+  - "origin=Debian,codename=${distro_codename}-security,label=Debian-Security"
+  - "origin=Ubuntu,codename=${distro_codename},label=Ubuntu"
+  - "origin=Ubuntu,codename=${distro_codename},label=Ubuntu-Security"
+  - "origin=Ubuntu,codename=${distro_codename}-security,label=Ubuntu-Security"
+  - "origin=Tailscale,codename=${distro_codename},label=Tailscale"
+  - "origin=Zabbix,codename=${distro_codename},label=zabbix"
+
+# Hosts can override "extra_origins" in their host_vars/<host>.yml or
+# group_vars/<group>.yml. Default empty.
+unattended_upgrades_extra_origins: []

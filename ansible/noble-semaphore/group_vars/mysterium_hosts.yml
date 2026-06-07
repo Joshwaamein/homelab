@@ -1,0 +1,4 @@
+---
+# 2026-06-07: hosts running Mysterium dVPN node from the upstream PPA.
+unattended_upgrades_extra_origins:
+  - "origin=LP-PPA-mysteriumnetwork-node,codename=${distro_codename},label=Mysterium Node"

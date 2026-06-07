@@ -57,14 +57,15 @@
       copy:
         dest: /etc/msmtprc
         owner: root
-        group: root
-        mode: '0600'
+        group: msmtp
+        mode: '0640'
         content: |
           defaults
           auth           on
           tls            on
           tls_trust_file /etc/ssl/certs/ca-certificates.crt
           logfile        /var/log/msmtp.log
+          aliases        /etc/aliases
 
           account        brevo
           host           {{ unattended_upgrades_smtp_host }}
@@ -83,6 +84,45 @@
         owner: root
         group: root
         mode: '0644'
+      tags: msmtp
+
+    - name: Ensure /etc/aliases rewrites root to monitoring inbox (#216)
+      copy:
+        dest: /etc/aliases
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Managed by Ansible (configure-unattended-upgrades.yml).
+          # Local mail addressed to root or any unrecognised user gets
+          # rewritten to the central monitoring inbox before msmtp hands
+          # it to Brevo. Brevo rejects bare local usernames with a 501.
+          postmaster: root
+          root: {{ unattended_upgrades_email }}
+          default: {{ unattended_upgrades_email }}
+      tags: msmtp
+
+    - name: Check whether netdata user exists (#329)
+      command: id netdata
+      register: netdata_user_check
+      failed_when: false
+      changed_when: false
+      tags: msmtp
+
+    - name: Add netdata user to msmtp group so alarm-notify.sh can read msmtprc (#329)
+      user:
+        name: netdata
+        groups: msmtp
+        append: yes
+      when: netdata_user_check.rc == 0
+      register: netdata_group_join
+      tags: msmtp
+
+    - name: Restart netdata so the new group membership takes effect (#329)
+      systemd:
+        name: netdata
+        state: restarted
+      when: netdata_group_join is defined and netdata_group_join.changed
       tags: msmtp
 
     - name: Ensure msmtp log file exists with correct permissions
@@ -108,12 +148,12 @@
         mode: '0644'
         content: |
           Unattended-Upgrade::Origins-Pattern {
-              "origin=Debian,codename=${distro_codename},label=Debian";
-              "origin=Debian,codename=${distro_codename},label=Debian-Security";
-              "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
-              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu";
-              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu-Security";
-              "origin=Ubuntu,codename=${distro_codename}-security,label=Ubuntu-Security";
+          {% for origin in unattended_upgrades_origins_universal %}
+              "{{ origin }}";
+          {% endfor %}
+          {% for origin in unattended_upgrades_extra_origins %}
+              "{{ origin }}";
+          {% endfor %}
           };
           Unattended-Upgrade::Package-Blacklist {
           };
@@ -146,12 +186,12 @@
         mode: '0644'
         content: |
           Unattended-Upgrade::Origins-Pattern {
-              "origin=Debian,codename=${distro_codename},label=Debian";
-              "origin=Debian,codename=${distro_codename},label=Debian-Security";
-              "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
-              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu";
-              "origin=Ubuntu,codename=${distro_codename},label=Ubuntu-Security";
-              "origin=Ubuntu,codename=${distro_codename}-security,label=Ubuntu-Security";
+          {% for origin in unattended_upgrades_origins_universal %}
+              "{{ origin }}";
+          {% endfor %}
+          {% for origin in unattended_upgrades_extra_origins %}
+              "{{ origin }}";
+          {% endfor %}
           };
           Unattended-Upgrade::Package-Blacklist {
           };

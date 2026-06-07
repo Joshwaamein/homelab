@@ -1,0 +1,4 @@
+---
+# 2026-06-07: hosts with Docker CE apt repo — auto-patch the Docker daemon.
+unattended_upgrades_extra_origins:
+  - "origin=Docker,label=Docker CE"
