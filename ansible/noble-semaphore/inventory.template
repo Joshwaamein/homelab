@@ -59,7 +59,7 @@
 # Add Ubuntu Docker hosts here
 
 [ansible]
-localhost
+localhost ansible_connection=local
 
 [servarr]
 # Add Servarr instances here
@@ -69,3 +69,11 @@ localhost
 
 [discord_bot]
 # Add Discord bot hosts here
+
+# 2026-06-07 (#331): make every host in [ansible] inherit [ubuntu_vms]
+# membership so the configure-unattended-upgrades.yml playbook picks
+# up the ansible control node itself. Avoids the duplicate-host
+# problem from listing localhost in [ubuntu_vms] directly while
+# also having ansible_connection=local in [ansible].
+[ubuntu_vms:children]
+ansible
