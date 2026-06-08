@@ -124,18 +124,18 @@
   `sudo` and `smartmontools` on the 3 PBS hosts and drops in
   `/etc/sudoers.d/zabbix-smartctl` granting the `zabbix` user `NOPASSWD`
   access to `/usr/sbin/smartctl` (the same policy already in place on
-  <pve-1/2/3>). Validates the sudoers file with `visudo -cf`, restarts
+  `<pve-1/2/3>`). Validates the sudoers file with `visudo -cf`, restarts
   `zabbix-agent2`, and confirms the SMART plugin's exact call path
   (`sudo -u zabbix sudo -n smartctl --scan -j`) returns `exit_status: 0`.
 
 ### Fixed
-- The `SMART by Zabbix agent 2` template was already attached to <pbs-1/2/3>
+- The `SMART by Zabbix agent 2` template was already attached to `<pbs-1/2/3>`
   but failing every LLD pass with
   `failed to scan for devices: ... exec: "sudo": executable file not found
   in $PATH`. PBS ships lean (no `sudo` package), so the agent's plugin
   could not elevate to call `smartctl`. After the playbook, the LLD on all
   3 PBS hosts cleared (`state=0`, no error) and disks started populating
-  in Zabbix (<pbs-1>: 3 disks, <pbs-2>: 2 disks, <pbs-3>: 3 disks including the
+  in Zabbix (`<pbs-1>`: 3 disks, `<pbs-2>`: 2 disks, `<pbs-3>`: 3 disks including the
   <USB-bridged 1TB drive> / `/dev/sdc` that backs the `<usb-datastore-name>`
   datastore).
 - Bumped `Plugins.Smart.Timeout=10` (from default 3 s) on `<pbs-3>` and
@@ -149,12 +149,12 @@
 - `<pbs-3>` post-fix: items=14 and growing, triggers=12,
   `[sdc sat]: Reallocated_Sector_Ct=0`, `Power_On_Hours=8578`,
   `Device model=<USB-bridged 1TB drive model>` visible.
-- All 6 hosts (<pve-1/2/3> + <pbs-1/2/3>) now have `state=0` on the
+- All 6 hosts (`<pve-1/2/3>` + `<pbs-1/2/3>`) now have `state=0` on the
   `smart.disk.discovery` LLD.
 
 ### Vikunja
 - Closes task **#34** ("Get Zabbix to monitor SMART on PVE hosts").
-- Extends task **#301** (<pbs-3> disk health) by giving its
+- Extends task **#301** (`<pbs-3>` disk health) by giving its
   `UDMA_CRC_Error_Count`, `Reallocated_Sector_Ct`, and
   `Current_Pending_Sector` attributes a Zabbix item path so future
   changes alert via the bundled `Some prefail Attributes <= threshold`
