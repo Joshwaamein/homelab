@@ -1,5 +1,122 @@
 # Changelog
 
+## [2026-06-08] - UniFi controller migration + config-ufw.yml repair
+
+### Added
+- **`group_vars/all/ufw_ports.yml`** (new) — universal UFW port
+  variables. Carries `ufw_base_ports` (SSH + Zabbix Agent + Tailscale,
+  per-source-scoped) plus empty-list defaults for every other
+  `ufw_<group>_ports` and `ufw_*_host_ips` var the play references.
+  Empty defaults stop undefined-var landmines (one of which had been
+  silently triggering the rescue block on every UFW play run).
+- **`group_vars/unifi_uos.yml`** (new) — port set for hosts running
+  the new containerised UniFi OS Server (5.1.x+). Adds the new admin
+  UI port and new guest-HTTPS port; drops the legacy admin-UI and
+  legacy guest-HTTPS ports. LAN scope is the relevant management
+  subnet, tailnet scope is `100.0.0.0/8`.
+- **`group_vars/unifi_legacy.yml`** (new) — port set for hosts still
+  running the legacy Java Network Application. Keeps the legacy
+  admin-UI and legacy guest-HTTPS ports. LAN scope is the relevant
+  management subnet for the legacy host's site.
+- **Inventory subgroups** in `inventory.template`: `[unifi:children]`
+  with `[unifi_uos]` and `[unifi_legacy]` as children so any play
+  targeting the parent `unifi` (the Zabbix host-group map, etc.)
+  still resolves both hosts. Live inventory patched to the same
+  shape (backup at `<inventory>.bak-2026-06-08-pre-unifi-split`).
+
+### Changed
+- **`config-ufw.yml`** — base-rules block and UniFi-rules block now
+  honor an optional `src` per port-list item
+  (`from_ip: "{{ item.src | default('any') }}"`). Default `any` keeps
+  backwards compatibility with any per-group list that doesn't carry
+  `src`. Block-level `when:` clauses still gate per-group membership.
+- **`config-ufw.yml`** — new "Retire deprecated UniFi rules" task that
+  deletes UFW rules listed in `ufw_unifi_deprecated_ports`. Same item
+  shape as the additive list. Empty default in
+  `group_vars/all/ufw_ports.yml`, populated per-subgroup. Lets the
+  play own the full lifecycle (add new rules + retire old ones)
+  rather than relying on one-shot `ufw delete` after a migration.
+- **`group_vars/unifi_uos.yml`** — populated `ufw_unifi_deprecated_ports`
+  with the legacy admin UI / guest HTTPS / SSDP entries that are no
+  longer needed once a host moves to the UOS Server stack
+  (`8443/tcp`, `8843/tcp`, `1900/udp`, on both
+  `192.168.0.0/16` and `100.0.0.0/8` source ranges).
+
+### Audit findings (root cause of why the play had been broken)
+- The fleet's UFW state had been **hand-curated, not Ansible-managed**.
+  `config-ufw.yml` was non-functional in production: `ufw_base_ports`
+  was undefined in any live group_vars file. The play hit
+  `'ufw_base_ports' is undefined` at the first non-skipped task and
+  triggered the rescue block (`Disable UFW on error`) on every run.
+  Because UFW's `community.general.ufw` reports `changed` in
+  `--check` mode without applying, neither dry-runs nor reviews
+  caught it.
+- `ufw_unifi_ports`, `ufw_mysterium_ports`, `ufw_mysterium_host_ips`,
+  `ufw_pi4_host_ips` and most other per-group `ufw_*` vars were
+  also undefined. They existed only in
+  `group_vars/all/vault.yml.example` as a documentation stub.
+  `vault.yml` itself is plain YAML (gitignored, mode 0600) and held
+  only the SMTP password, no UFW data; an earlier draft of this
+  entry that recommended `ansible-vault edit` was wrong.
+- The `[unifi]` group held two hosts (`<unifi-vm>` running the new
+  containerised UniFi OS Server, and `<unifi-pi>` still running the
+  legacy Java Network Application on a Pi 3 B+). They need different
+  port sets and different LAN scopes; a flat group couldn't
+  represent that.
+
+### Verified (check-mode dry-run on `--limit unifi`, 2026-06-08)
+- Final recap: `failed=0, rescued=0, ignored=0` on both UniFi hosts.
+  Both report `changed=4-5` for the new per-source rules the play
+  would add. Existing legacy rules with broader `192.168.0.0/16`
+  source scopes would remain (UFW module is additive only; cleanup
+  is a separate follow-up).
+- `unattended-upgrades.service` on `<unifi-vm>` remains active +
+  enabled, daily timer at 05:00 BST. Origins covered: Debian +
+  Ubuntu + Tailscale + Zabbix. The host OS, kernel and base
+  packages will continue to receive security patches automatically.
+  **The container running the new UniFi OS Server is NOT covered**
+  by unattended-upgrades because it's not an apt package; that
+  update path is a dedicated systemd updater service shipped with
+  the container.
+
+### Out of band (not in this repo, recorded for history)
+- `<unifi-vm>` was migrated in place from the legacy Java Network
+  Application to the new containerised UniFi OS Server stack on
+  2026-06-08. Legacy `unifi.service` and the bundled mongod were
+  stopped + disabled; an orphan mongod (forked outside the systemd
+  cgroup by the legacy init script) was caught and killed manually.
+  Lesson for future controller migrations: verify with
+  `pgrep -au unifi`, not just `systemctl is-active unifi`.
+
+### Follow-ups (open)
+- **Master decides whether/when to actually apply `config-ufw.yml`.**
+  The dry-run is clean but no apply tonight: it would add new rules
+  alongside existing legacy ones, doubling rule counts. A separate
+  cleanup pass (via `state: absent` task block or one-shot
+  `ufw delete <rule>`) is needed to retire the redundant legacy
+  rules before the play's output is the canonical state.
+- **Triton-pi UniFi controller** still on the legacy stack. Options:
+  retire `<unifi-pi>`'s controller role and bring the site in as a
+  second site under `<unifi-vm>`'s new UniFi OS Server, or replace
+  `<unifi-pi>` with a more capable host that can run UOS Server.
+- **`ufw_<group>_ports` lists for all the other groups** that still
+  only exist in `vault.yml.example`. The empty-list defaults in
+  `group_vars/all/ufw_ports.yml` stop the play from failing, but
+  per-group lists should be promoted into proper `group_vars/<group>.yml`
+  files so the play actually manages those hosts' UFW state.
+- **Stale rule audit on `<unifi-pi>`**: the legacy Sashimono-era
+  rules (`39098`, `44840`) flagged on `<unifi-vm>` 2026-06-06 are
+  also present on `<unifi-pi>` and need the same removal.
+
+### Vikunja
+- Closes the implicit "migrate `<unifi-vm>` off Network Application
+  before it gets retired upstream" task.
+- Suggested follow-up tickets: "promote per-group `ufw_*_ports`
+  lists from vault.yml.example into real group_vars files", "audit
+  + retire stale Sashimono-era UFW rules fleet-wide".
+
+---
+
 ## [2026-05-27] - SMART Monitoring Enabled on PBS Hosts
 
 ### Added
