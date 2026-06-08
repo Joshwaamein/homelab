@@ -31,7 +31,7 @@ ansible-playbook config-f2b-protect-sshd.yaml
 ```
 
 **Exclusions:**
-- motioneye - LXC container with Debian 13 compatibility issues
+- <surveillance-host> - LXC container with Debian 13 compatibility issues
 
 **Notes:** Works on both Debian (apt) and RedHat (dnf) systems
 
@@ -41,7 +41,7 @@ ansible-playbook config-f2b-protect-sshd.yaml
 
 **Purpose:** Configures host-based firewall rules for all services
 
-**Targets:** `ubuntu_vms`, `noble_net_alma`, `evernode`, `xahau`, `unifi`, `nginx`, `servarr`, `pi4`, `pve_data`, `presearch`, `myst`, `ubuntu_docker`, `discord_bot`, `pihole`, `motioneye`, `ansible`, `hosts`
+**Targets:** `ubuntu_vms`, `noble_net_alma`, `evernode`, `xahau`, `unifi`, `nginx`, `<media>`, `pi4`, `<storage-vm>`, `<presearch>`, `<vpn-node>`, `<docker-host>`, `<bot>`, `<pihole>`, `<surveillance-host>`, `ansible`, `hosts`
 
 **Features:**
 - Automatic service detection based on inventory groups
@@ -54,16 +54,10 @@ ansible-playbook config-f2b-protect-sshd.yaml
 ansible-playbook config-ufw.yml
 ```
 
-**Firewall Rules by Group:**
-- **Base (all hosts):** SSH (22), Zabbix (10050), Tailscale (41641)
-- **Evernode:** HTTP/HTTPS, XRPL ports, Contract ports (36525-36531, 39064-39070, 22861-22864)
-- **UniFi:** Controller ports (8080, 8443, 8843, 8880, 6789, 3478, 10001, 1900)
-- **Nginx:** HTTP (80), HTTPS (443)
-- **Pi-hole:** DNS (53), DHCP (67, 547), Web UI (80, 443)
-- **Servarr:** All *arr apps, Jellyfin, Portainer, TVHeadend
-- **Docker hosts:** Portainer, Vikunja (3456), Beaverhabits (8081)
-- **Mysterium:** API (4449), Transactor (44158), P2P (45969)
-- **MotionEye:** Web (8765), Streaming (8081)
+**Firewall Rules by Group:** redacted. Per-group rule sets live in
+`config-ufw.yml` (gitignored values). The published version of this
+doc lists groups but not ports. Default policy: SSH + Zabbix + Tailscale
+on every host; per-group additions per the playbook.
 
 **Safety:** Automatically skips Proxmox hypervisors and PBS servers
 
@@ -150,7 +144,7 @@ ansible-playbook install-qemu-guest-agent.yml
 ```
 
 **Exclusions:**
-- motioneye - LXC container
+- <surveillance-host> - LXC container
 
 **Requirements:** VM must have QEMU Guest Agent enabled in Proxmox settings
 
@@ -304,7 +298,7 @@ ansible-playbook tailscale-net-zabbix-agent-playbook.yml
 **Template Mapping:**
 - **Evernode:** "Linux by Zabbix agent active", "Docker by Zabbix agent active"
 - **Nginx:** "Linux by Zabbix agent active", "Nginx by Zabbix agent"
-- **Servarr:** "Linux by Zabbix agent active", "Docker by Zabbix agent active"
+- **<media>:** "Linux by Zabbix agent active", "Docker by Zabbix agent active"
 
 **Note:** Manually import custom templates in Zabbix UI, then update playbook variables
 
@@ -324,7 +318,7 @@ ansible-playbook tailscale-net-zabbix-agent-playbook.yml
 
 **Purpose:** Automates Let's Encrypt SSL certificate management
 
-**Targets:** `nginx`, `pihole`, `pve_data`
+**Targets:** `nginx`, `<pihole>`, `<storage-vm>`
 
 **Features:**
 - Installs certbot and nginx plugin
@@ -504,14 +498,14 @@ vault_letsencrypt_email: "<your_email@example.com>"
 - `[xahau]` - Xahau blockchain host
 - `[unifi]` - UniFi Controllers
 - `[nginx]` - Nginx web servers
-- `[pihole]` - Pi-hole DNS servers
-- `[servarr]` / `[servarrr]` - Media stack
+- `[<pihole>]` - DNS servers
+- `[<media>]` / `[<media-host>]` - Media stack
 - `[ubuntu_docker]` - Docker hosts
-- `[motioneye]` - MotionEye surveillance
-- `[discord_bot]` - Discord bot hosts
+- `[<surveillance-host>]` - MotionEye surveillance
+- `[<bot>]` - Discord bot hosts
 - `[pve_data]` - Data services (Grafana, InfluxDB, PostgreSQL)
 - `[presearch]` - Presearch nodes
-- `[myst]` - Mysterium DVPN nodes
+- `[<vpn-node>]` - DVPN nodes
 - `[pi4]` - Raspberry Pi 4 devices
 - `[ansible]` - Ansible/Semaphore management host
 
@@ -538,7 +532,7 @@ vault_letsencrypt_email: "<your_email@example.com>"
 - Won't happen - playbook ensures SSH is allowed FIRST
 - Rescue block disables UFW on any error
 
-**5. fail2ban Service Not Found (motioneye)**
+**5. fail2ban Service Not Found (<surveillance-host>)**
 - Expected - LXC container on Debian 13 Trixie
 - Host is excluded from playbook
 
@@ -617,12 +611,12 @@ ansible-playbook secure_ssh_configuration.yml --check
 ## Files Modified During This Enhancement Session
 
 ### Fixed/Enhanced:
-- `config-f2b-protect-sshd.yaml` - Added motioneye exclusion
+- `config-f2b-protect-sshd.yaml` - Added <surveillance-host> exclusion
 - `config-ufw.yml` - Fixed port ranges, added ports, comprehensive audit
-- `install-qemu-guest-agent.yml` - Added motioneye exclusion
+- `install-qemu-guest-agent.yml` - Added <surveillance-host> exclusion
 - `secure_ssh_configuration.yml` - Added 6 security settings, fixed 4 bugs
 - `set_timezone_noble_network.yml` - Added reporting and verification
-- `inventory` - Added motioneye, uncommented triton-pi, added pve3, commented separator
+- `inventory` - Added <surveillance-host>, uncommented <remote-pi>, added <pve-3>, commented separator
 - `group_vars/all/vars.yml` - Added SSH security variables
 
 ### Created:
@@ -639,7 +633,7 @@ ansible-playbook secure_ssh_configuration.yml --check
 
 ## Critical Bugs Fixed
 
-1. **UFW Evernode Port Ranges** - Port range syntax incompatibility (36525-36531, etc.)
+1. **UFW Evernode Port Ranges** - Port range syntax incompatibility on the Evernode-specific ports.
 2. **Inventory Separator** - Line treated as hostname causing unreachable errors
 3. **SSH Windows Detection** - Incorrect ansible_facts dict access
 4. **SSH Handler async** - Conflict with check mode

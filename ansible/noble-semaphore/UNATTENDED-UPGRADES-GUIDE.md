@@ -131,13 +131,13 @@ cat /var/run/reboot-required.pkgs
 - Friday 1:00 AM: Ansible playbook updates all VMs and Proxmox hosts
 - Saturday 1:00 PM: Ansible control node reboots (if needed) - **12 hours later**
 
-### Why pve2 Reboot is Safe:
+### Why <pve-2> Reboot is Safe:
 
-Even though the ansible VM is hosted on pve2, rebooting pve2 through ansible is safe because:
+Even though the ansible VM is hosted on <pve-2>, rebooting <pve-2> through ansible is safe because:
 
-1. **Command is Queued:** Ansible sends the reboot command to pve2 before it actually reboots
-2. **Ansible Waits:** The playbook waits for pve2 to come back online
-3. **VM Auto-Starts:** When pve2 reboots, all VMs (including ansible) automatically restart
+1. **Command is Queued:** Ansible sends the reboot command to <pve-2> before it actually reboots
+2. **Ansible Waits:** The playbook waits for <pve-2> to come back online
+3. **VM Auto-Starts:** When <pve-2> reboots, all VMs (including ansible) automatically restart
 4. **Verification:** Ansible reconnects and confirms the reboot was successful
 
 **Result:** No orphaned processes or incomplete tasks.

@@ -7,37 +7,37 @@
   `sudo` and `smartmontools` on the 3 PBS hosts and drops in
   `/etc/sudoers.d/zabbix-smartctl` granting the `zabbix` user `NOPASSWD`
   access to `/usr/sbin/smartctl` (the same policy already in place on
-  pve1/pve2/pve3). Validates the sudoers file with `visudo -cf`, restarts
+  <pve-1/2/3>). Validates the sudoers file with `visudo -cf`, restarts
   `zabbix-agent2`, and confirms the SMART plugin's exact call path
   (`sudo -u zabbix sudo -n smartctl --scan -j`) returns `exit_status: 0`.
 
 ### Fixed
-- The `SMART by Zabbix agent 2` template was already attached to pbs1/2/3
+- The `SMART by Zabbix agent 2` template was already attached to <pbs-1/2/3>
   but failing every LLD pass with
   `failed to scan for devices: ... exec: "sudo": executable file not found
   in $PATH`. PBS ships lean (no `sudo` package), so the agent's plugin
   could not elevate to call `smartctl`. After the playbook, the LLD on all
   3 PBS hosts cleared (`state=0`, no error) and disks started populating
-  in Zabbix (pbs1: 3 disks, pbs2: 2 disks, pbs3: 3 disks including the
-  USB-bridged ST1000LM024 / `/dev/sdc` that backs the `usb-backup`
+  in Zabbix (<pbs-1>: 3 disks, <pbs-2>: 2 disks, <pbs-3>: 3 disks including the
+  <USB-bridged 1TB drive> / `/dev/sdc` that backs the `<usb-datastore-name>`
   datastore).
-- Bumped `Plugins.Smart.Timeout=10` (from default 3 s) on `pbs3` and
-  `pve3` because both have USB-bridged drives whose first attribute read
+- Bumped `Plugins.Smart.Timeout=10` (from default 3 s) on `<pbs-3>` and
+  `<pve-3>` because both have USB-bridged drives whose first attribute read
   occasionally took > 0.5 s and produced a `Timeout occurred while
   gathering data.` LLD error during agent restart cycles.
 
 ### Verified
-- `pve1/2/3` SMART monitoring still healthy: 45/72/21 items, 48/72/24
+- `<pve-1/2/3>` SMART monitoring still healthy: 45/72/21 items, 48/72/24
   triggers (pre-existing).
-- `pbs3` post-fix: items=14 and growing, triggers=12,
+- `<pbs-3>` post-fix: items=14 and growing, triggers=12,
   `[sdc sat]: Reallocated_Sector_Ct=0`, `Power_On_Hours=8578`,
-  `Device model=ST1000LM024 HN-M101MBB` visible.
-- All 6 hosts (pve1/2/3 + pbs1/2/3) now have `state=0` on the
+  `Device model=<USB-bridged 1TB drive model>` visible.
+- All 6 hosts (<pve-1/2/3> + <pbs-1/2/3>) now have `state=0` on the
   `smart.disk.discovery` LLD.
 
 ### Vikunja
 - Closes task **#34** ("Get Zabbix to monitor SMART on PVE hosts").
-- Extends task **#301** (pbs3 disk health) by giving its
+- Extends task **#301** (<pbs-3> disk health) by giving its
   `UDMA_CRC_Error_Count`, `Reallocated_Sector_Ct`, and
   `Current_Pending_Sector` attributes a Zabbix item path so future
   changes alert via the bundled `Some prefail Attributes <= threshold`

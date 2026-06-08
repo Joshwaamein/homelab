@@ -238,7 +238,7 @@ Your inventory file defines hosts and groups:
 100.x.x.x          # server1
 
 [proxmox]
-100.x.x.x          # pve1
+100.x.x.x          # <pve-1>
 ```
 
 ## 🛠️ Development Workflow

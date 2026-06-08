@@ -35,4 +35,4 @@ encoded as the literal 4-char sequence `\x2d`. The script handles
 that encoding via a small Python walk so we don't fight bash and
 fnmatch escape rules.
 
-Filed under [Vikunja #301](http://ubuntu-docker:3456/tasks/301).
+Filed under [Vikunja #301](http://<docker-host>:<vikunja-port>/tasks/301).

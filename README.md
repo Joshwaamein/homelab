@@ -144,10 +144,10 @@ Web-based UI for Ansible automation with:
 
 ### Managed Systems
 - **Ubuntu/Debian VMs** (31 hosts) — Various infrastructure services
-- **Proxmox Hypervisors** (pve1, pve2, pve3) — Virtualization platform
-- **Proxmox Backup Servers** (pbs1, pbs2, pbs3, pbs-t14) — Backup infrastructure
+- **Proxmox Hypervisors** (<pve-1>, <pve-2>, <pve-3>) — Virtualization platform
+- **Proxmox Backup Servers** (<pbs-1>, <pbs-2>, <pbs-3>, <pbs-laptop>) — Backup infrastructure
 - **Evernode Instances** — XRPL nodes
-- **Application Servers** — Servarrr, Pi-hole, UniFi, Bitwarden, Ghost, etc.
+- **Application Servers** — `<media-host>`, `<pihole>`, `<unifi>`, `<vault-host>`, `<ghost-host>`, etc.
 
 ### Network
 - **Tailscale VPN** — Secure remote access (100.x.x.x range)
@@ -160,9 +160,9 @@ Web-based UI for Ansible automation with:
 | 04:00 | `apt-get update` | All VMs |
 | 05:00 | `apt-get upgrade` | All VMs |
 | 05:30 | Auto-reboot if needed | All VMs |
-| 05:00 | `apt-get update` | pve1, pve2, pve3 |
-| 06:00 | `apt-get upgrade` | pve1, pve2, pve3 |
-| 06:30 | Auto-reboot if needed | pve1, pve2, pve3 |
+| 05:00 | `apt-get update` | <pve-1>, <pve-2>, <pve-3> |
+| 06:00 | `apt-get upgrade` | <pve-1>, <pve-2>, <pve-3> |
+| 06:30 | Auto-reboot if needed | <pve-1>, <pve-2>, <pve-3> |
 
 > Proxmox hypervisors update after VMs to ensure guests reboot before the host.
 
