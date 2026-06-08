@@ -31,8 +31,23 @@
 [xahau]
 # Add Xahau nodes here
 
-[unifi]
-# Add UniFi controller hosts here
+# Parent UniFi group. Use [unifi:children] so plays that target the
+# parent (config-ufw.yml, the Zabbix host-group map) still resolve all
+# UniFi controllers regardless of which generation they run.
+[unifi:children]
+unifi_uos
+unifi_legacy
+
+# Hosts running UniFi OS Server 5.1.x+ (containerised UniFi OS).
+# Loads group_vars/unifi_uos.yml.
+[unifi_uos]
+# Add hosts running UniFi OS Server here
+
+# Hosts still running the legacy Java Network Application + bundled
+# MongoDB. Loads group_vars/unifi_legacy.yml.
+[unifi_legacy]
+# Add hosts running legacy UniFi Network Application here
+
 
 [nginx]
 # Add Nginx servers here

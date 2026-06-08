@@ -1,0 +1,72 @@
+---
+# /opt/ansible/noble-semaphore/group_vars/unifi_legacy.yml
+# 2026-06-08: per-subgroup var file for the [unifi_legacy] inventory
+# group (parent: [unifi]). Holds UFW rules for hosts still running the
+# legacy UniFi Network Application (Java + bundled MongoDB), as opposed
+# to the UniFi OS Server 5.1.x+ stack on hosts in [unifi_uos].
+#
+# As of 2026-06-08 the only member is `<unifi-pi>` (100.x.x.x) at
+# the triton site, on UniFi 8.0.28 atop a Raspberry Pi 3 B+. The
+# legacy ports differ from UOS Server in two ways:
+#   - Admin UI is 8443/tcp, NOT 11443/tcp.
+#   - Guest portal HTTPS is 8843/tcp, NOT 8444/tcp.
+# All other ports (8080 inform, 8880 guest HTTP, 6789 speedtest,
+# 3478/udp STUN, 10001/udp L2 discovery) are unchanged across the
+# legacy/UOS-Server divide.
+#
+# LAN scope is the triton mgmt subnet `192.168.68.0/24` (the only
+# address space on triton's UniFi-managed LAN; gavins court / farringdon
+# / noble are on different subnets and do not host triton's controller).
+# Tailnet scope is the universal `100.0.0.0/8`.
+#
+# Run `config-ufw.yml --limit unifi_legacy` to apply.
+#
+# When <unifi-pi> gets retired or migrated (e.g. brought in as a second
+# site under the noble UOS Server, or replaced by a more capable host
+# running UOS Server itself), move the host into `[unifi_uos]` and
+# delete this file.
+
+ufw_unifi_ports:
+  # Device inform: APs and the USL16LPB switch heartbeat here.
+  - { port: '8080',  proto: 'tcp', src: '192.168.68.0/24', comment: 'Device inform LAN' }
+  - { port: '8080',  proto: 'tcp', src: '100.0.0.0/8',     comment: 'Device inform Tailscale' }
+
+  # Legacy admin UI (the Java Network Application's HTTPS web interface).
+  # Replaced by 11443/tcp under UOS Server.
+  - { port: '8443',  proto: 'tcp', src: '192.168.68.0/24', comment: 'Legacy admin UI LAN' }
+  - { port: '8443',  proto: 'tcp', src: '100.0.0.0/8',     comment: 'Legacy admin UI Tailscale' }
+
+  # Legacy guest portal HTTPS. Replaced by 8444/tcp under UOS Server.
+  - { port: '8843',  proto: 'tcp', src: '192.168.68.0/24', comment: 'Legacy guest portal HTTPS LAN' }
+  - { port: '8843',  proto: 'tcp', src: '100.0.0.0/8',     comment: 'Legacy guest portal HTTPS Tailscale' }
+
+  # Guest portal HTTP (same port across legacy + UOS Server).
+  - { port: '8880',  proto: 'tcp', src: '192.168.68.0/24', comment: 'Guest portal HTTP LAN' }
+  - { port: '8880',  proto: 'tcp', src: '100.0.0.0/8',     comment: 'Guest portal HTTP Tailscale' }
+
+  # Mobile speedtest.
+  - { port: '6789',  proto: 'tcp', src: '192.168.68.0/24', comment: 'Mobile speedtest LAN' }
+  - { port: '6789',  proto: 'tcp', src: '100.0.0.0/8',     comment: 'Mobile speedtest Tailscale' }
+
+  # STUN.
+  - { port: '3478',  proto: 'udp', src: '192.168.68.0/24', comment: 'STUN LAN' }
+  - { port: '3478',  proto: 'udp', src: '100.0.0.0/8',     comment: 'STUN Tailscale' }
+
+  # L2 device discovery.
+  - { port: '10001', proto: 'udp', src: '192.168.68.0/24', comment: 'UniFi L2 discovery LAN' }
+  - { port: '10001', proto: 'udp', src: '100.0.0.0/8',     comment: 'UniFi L2 discovery Tailscale' }
+
+  # Note on existing <unifi-pi> rules NOT in this list:
+  # - 1900/udp (SSDP): legacy stub allow with no listener; safe to drop.
+  # - 39098, 44840: stale Sashimono-era Evernode rules left over from a
+  #   fleet-wide ansible role; not relevant to UniFi. Already removed
+  #   from <unifi-vm> 2026-06-06; should be removed from <unifi-pi> too.
+  # - Mysterium ports (4449, 44158, 45969): handled separately by the
+  #   `myst` group's `ufw_mysterium_ports` var, since <unifi-pi> is also
+  #   in `[myst]`.
+  # - Pi4 services (5000): handled by the `[pi4]` group's
+  #   `ufw_pi4_port` var.
+  # The play's loop is additive only: applying this list will add the
+  # rules above; the legacy duplicates and stale Evernode rules need
+  # a separate cleanup pass via `state: absent` or a one-shot
+  # `ufw delete <rule>`.

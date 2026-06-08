@@ -1,0 +1,95 @@
+---
+# /opt/ansible/noble-semaphore/group_vars/unifi_uos.yml
+# 2026-06-08: per-subgroup var file for the [unifi_uos] inventory group
+# (parent: [unifi]). Hosts in this subgroup run UniFi OS Server 5.1.x+,
+# the containerised UniFi OS that replaced the legacy Java Network
+# Application. As of 2026-06-08 the only member is `<unifi-vm>`
+# (100.x.x.x). Triton-pi (100.x.x.x) lives in the sibling
+# subgroup `[unifi_legacy]` because it still runs Network App 8.0.28
+# on a Pi 3 B+.
+#
+# This file is the new source of truth for UFW rules on hosts in
+# [unifi_uos]. Run `config-ufw.yml --limit unifi_uos` to apply.
+#
+# Each item carries an explicit `src` so the play can produce per-source
+# rules (preserving the "every rule has a comment and a source" pattern
+# audited as the cleanest UFW config in the fleet, per <unifi-vm>.md).
+# config-ufw.yml's UniFi block was patched at the same time to honor
+# `src` (default `any` for backwards compatibility with other groups
+# that don't carry it).
+#
+# Targets UniFi OS Server 5.1.x+ (the new admin UI is 11443/tcp, the
+# new guest HTTPS is 8444/tcp). The legacy Network Application ports
+# 8443/tcp (admin UI) and 8843/tcp (guest HTTPS) are deliberately not
+# included; the host-side listeners are gone after the 2026-06-08
+# in-place migration to UOS Server.
+
+ufw_unifi_ports:
+  # Device inform: APs/switches/gateways send heartbeats here. Reachable
+  # from both the LAN and the tailnet (master sometimes adopts gear
+  # over Tailscale Serve at remote sites).
+  - { port: '8080',  proto: 'tcp', src: '192.168.1.0/24', comment: 'Device inform LAN' }
+  - { port: '8080',  proto: 'tcp', src: '100.0.0.0/8',    comment: 'Device inform Tailscale' }
+
+  # New UOS Server admin UI. Mgmt VLAN + tailnet only.
+  - { port: '11443', proto: 'tcp', src: '192.168.1.0/24', comment: 'UOS Server admin UI mgmt VLAN' }
+  - { port: '11443', proto: 'tcp', src: '100.0.0.0/8',    comment: 'UOS Server admin UI Tailscale' }
+
+  # Guest portal HTTPS, replaces legacy 8843/tcp.
+  - { port: '8444',  proto: 'tcp', src: '192.168.1.0/24', comment: 'Guest portal HTTPS mgmt VLAN' }
+  - { port: '8444',  proto: 'tcp', src: '100.0.0.0/8',    comment: 'Guest portal HTTPS Tailscale' }
+
+  # Guest portal HTTP.
+  - { port: '8880',  proto: 'tcp', src: '192.168.1.0/24', comment: 'Guest portal HTTP LAN' }
+  - { port: '8880',  proto: 'tcp', src: '100.0.0.0/8',    comment: 'Guest portal HTTP Tailscale' }
+
+  # Mobile speedtest.
+  - { port: '6789',  proto: 'tcp', src: '192.168.1.0/24', comment: 'Mobile speedtest LAN' }
+  - { port: '6789',  proto: 'tcp', src: '100.0.0.0/8',    comment: 'Mobile speedtest Tailscale' }
+
+  # STUN, used for NAT-traversal during device adoption + remote control.
+  - { port: '3478',  proto: 'udp', src: '192.168.1.0/24', comment: 'STUN LAN' }
+  - { port: '3478',  proto: 'udp', src: '100.0.0.0/8',    comment: 'STUN Tailscale' }
+
+  # L2 device discovery (host-side listener; the container also publishes
+  # 10001/udp but the host-side `discovery` helper opens it independently).
+  - { port: '10001', proto: 'udp', src: '192.168.1.0/24', comment: 'UniFi L2 discovery LAN' }
+  - { port: '10001', proto: 'udp', src: '100.0.0.0/8',    comment: 'UniFi L2 discovery Tailscale' }
+
+  # Optional, only enable if you actually use these features.
+  # Mobile control (UDP 10003) and syslog ingest (UDP 5514) are bound
+  # by UOS Server's container and may need explicit allows depending
+  # on master's downstream wiring. Leaving commented to keep the
+  # default-deny posture explicit.
+  # - { port: '10003', proto: 'udp', src: '192.168.1.0/24', comment: 'UOS mobile control LAN' }
+  # - { port: '10003', proto: 'udp', src: '100.0.0.0/8',    comment: 'UOS mobile control Tailscale' }
+  # - { port: '5514',  proto: 'udp', src: '192.168.1.0/24', comment: 'UOS syslog ingest LAN' }
+  # - { port: '5514',  proto: 'udp', src: '100.0.0.0/8',    comment: 'UOS syslog ingest Tailscale' }
+
+
+# ----------------------------------------------------------------------
+# Deprecated rules to RETIRE on hosts in [unifi_uos]. Same item shape as
+# ufw_unifi_ports but `state: absent` is implied by config-ufw.yml's
+# "Retire deprecated UniFi rules" task. Used to clean up after a host
+# has migrated from the legacy stack: legacy admin UI 8443/tcp and
+# legacy guest portal HTTPS 8843/tcp have no listeners under UOS Server
+# (replaced by 11443/tcp + 8444/tcp respectively). Plus 1900/udp SSDP
+# which never had a listener but was historically allowed.
+#
+# Items here are scoped to the BROADER legacy source ranges
+# (192.168.0.0/16 LAN, 100.0.0.0/8 Tailscale) because that is the
+# shape of the rules that need retiring. The narrower mgmt-VLAN-scoped
+# entries in ufw_unifi_ports above are what stays. The play's loop is
+# idempotent: if a deprecated rule has already been deleted manually
+# (as on <unifi-vm> 2026-06-08 17:00 BST), the task is a no-op next run.
+
+ufw_unifi_deprecated_ports:
+  # Legacy admin UI (replaced by 11443/tcp).
+  - { port: '8443',  proto: 'tcp', src: '192.168.0.0/16' }
+  - { port: '8443',  proto: 'tcp', src: '100.0.0.0/8'    }
+  # Legacy guest portal HTTPS (replaced by 8444/tcp).
+  - { port: '8843',  proto: 'tcp', src: '192.168.0.0/16' }
+  - { port: '8843',  proto: 'tcp', src: '100.0.0.0/8'    }
+  # SSDP, no listener.
+  - { port: '1900',  proto: 'udp', src: '192.168.0.0/16' }
+  - { port: '1900',  proto: 'udp', src: '100.0.0.0/8'    }
