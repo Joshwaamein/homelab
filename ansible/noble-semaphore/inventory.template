@@ -70,6 +70,17 @@ localhost ansible_connection=local
 [discord_bot]
 # Add Discord bot hosts here
 
+[grafana_hosts]
+# 2026-06-08 (#332): hosts running the upstream Grafana apt repo.
+# Membership grants the `o=. stable,codename=stable,label=. stable`
+# Origins-Pattern entry from group_vars/grafana_hosts.yml.
+
+[pdm]
+# 2026-06-08 (#332): Proxmox Datacenter Manager hosts. Repo label is
+# `Proxmox Datacenter Manager Debian Repository`, distinct from the
+# regular Proxmox VE repo, so this group has its own group_vars/pdm.yml
+# Origins-Pattern entry.
+
 # 2026-06-07 (#331): make every host in [ansible] inherit [ubuntu_vms]
 # membership so the configure-unattended-upgrades.yml playbook picks
 # up the ansible control node itself. Avoids the duplicate-host

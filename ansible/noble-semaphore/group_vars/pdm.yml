@@ -1,0 +1,14 @@
+---
+# 2026-06-08 (#332): Proxmox Datacenter Manager (pdm) host.
+#
+# Uses a different repo label than the regular Proxmox VE repo
+# (`Proxmox Datacenter Manager Debian Repository` vs
+#  `Proxmox Debian Repository`), so it needs its own Origins-Pattern
+# entry. Same publisher (origin=Proxmox), same release (trixie), but
+# the label string in the InRelease file is what apt matches against.
+#
+# zfsutils-linux, zfs-zed, zfs-initramfs, shim-signed, etc. all ship
+# from this same repo, so this single line covers everything pdm
+# needs auto-patched.
+unattended_upgrades_extra_origins:
+  - "origin=Proxmox,codename=${distro_codename},label=Proxmox Datacenter Manager Debian Repository"

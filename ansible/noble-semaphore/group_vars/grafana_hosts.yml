@@ -1,0 +1,13 @@
+---
+# 2026-06-08 (#332): hosts running the upstream Grafana apt repo
+# (https://apt.grafana.com stable main).
+#
+# The Grafana repo is unusual: its InRelease file declares
+#   Origin: . stable
+#   Label:  . stable
+# (yes, with a literal dot-space prefix, this is upstream Grafana's
+# convention, see e.g. https://github.com/grafana/grafana/issues/52568).
+# Origins-Pattern accepts a bare `o=` short-key for the value, so we
+# match it as `o=. stable` rather than the usual `origin=Grafana`.
+unattended_upgrades_extra_origins:
+  - "o=. stable,codename=stable,label=. stable"
