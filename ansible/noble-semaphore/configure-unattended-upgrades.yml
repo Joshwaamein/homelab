@@ -32,6 +32,81 @@
       when: ansible_os_family is not defined or ansible_os_family != "Debian"
 
     # -------------------------------------------------------
+    # Normalize Tailscale apt repo codename (#333)
+    # -------------------------------------------------------
+    # The Tailscale install snippet writes
+    #   deb https://pkgs.tailscale.com/stable/<distro> <codename> main
+    # using whatever codename was current when Tailscale was first
+    # installed. After a do-release-upgrade or similar the codename in
+    # this file does NOT get rewritten (the dist-upgrade tool stashes a
+    # `.distUpgrade` sibling but leaves the active file alone), and
+    # `Origin=Tailscale,codename=${distro_codename}` in the
+    # Origins-Pattern then silently no-ops, leaving Tailscale unpatched.
+    # Rewrite the file to match `ansible_distribution_release` whenever
+    # they diverge. Idempotent: a `changed` only happens on actual drift.
+
+    # The codename and distro family are sourced via shell from
+    # /etc/os-release rather than ansible facts so this task block
+    # works correctly when invoked with `--tags tailscale-codename`
+    # alone (which would otherwise skip implicit fact gathering on
+    # newer Ansible versions, leaving `ansible_distribution_release`
+    # undefined). os-release is universal on every Debian/Ubuntu
+    # host the play targets.
+
+    - name: Check whether Tailscale apt repo file exists
+      stat:
+        path: /etc/apt/sources.list.d/tailscale.list
+      register: tailscale_repo_file
+      tags: tailscale-codename
+
+    - name: Detect actual distro codename and family from /etc/os-release
+      shell: |
+        set -e
+        . /etc/os-release
+        printf '%s\n%s\n' "${VERSION_CODENAME}" "${ID}"
+      register: tailscale_os_release
+      changed_when: false
+      check_mode: false
+      when: tailscale_repo_file.stat.exists
+      tags: tailscale-codename
+
+    - name: Read current codename from Tailscale apt repo
+      shell: |
+        awk '/^deb /{for (i=1; i<=NF; i++) if ($i == "main") {print $(i-1); exit}}' \
+          /etc/apt/sources.list.d/tailscale.list
+      register: tailscale_repo_codename
+      changed_when: false
+      check_mode: false
+      when: tailscale_repo_file.stat.exists
+      tags: tailscale-codename
+
+    - name: Rewrite Tailscale apt repo to current distro codename
+      vars:
+        actual_codename: "{{ tailscale_os_release.stdout_lines[0] | trim }}"
+        actual_distro: "{{ tailscale_os_release.stdout_lines[1] | trim }}"
+      copy:
+        dest: /etc/apt/sources.list.d/tailscale.list
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Tailscale packages for {{ actual_distro }} {{ actual_codename }}
+          # Managed by configure-unattended-upgrades.yml
+          deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ actual_distro }} {{ actual_codename }} main
+        backup: yes
+      when:
+        - tailscale_repo_file.stat.exists
+        - tailscale_repo_codename.stdout is defined
+        - tailscale_os_release.stdout_lines is defined
+        - tailscale_repo_codename.stdout | trim != actual_codename
+      notify: apt update after tailscale repo rewrite
+      tags: tailscale-codename
+
+    - name: Run handler before apt cache use (flush)
+      meta: flush_handlers
+      tags: tailscale-codename
+
+    # -------------------------------------------------------
     # Install packages
     # -------------------------------------------------------
 
@@ -350,3 +425,7 @@
     - name: Reload systemd
       systemd:
         daemon_reload: yes
+
+    - name: apt update after tailscale repo rewrite
+      apt:
+        update_cache: yes
