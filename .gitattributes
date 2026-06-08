@@ -1,0 +1,47 @@
+# Repo-wide line-ending discipline.
+#
+# `* text=auto eol=lf` tells git: detect text files automatically, and when
+# checking out, always normalise to LF. This keeps the working tree clean
+# regardless of which editor or OS the file is touched from.
+#
+# Binary files (images, archives, compiled assets) are exempted explicitly
+# so git does not try to text-normalise them.
+#
+# Vikunja #223.
+
+* text=auto eol=lf
+
+# Shell scripts must be LF-only or they break on Linux/macOS.
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# YAML and Ansible files: LF.
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.j2   text eol=lf
+
+# Python: LF.
+*.py   text eol=lf
+
+# Markdown and config: LF.
+*.md   text eol=lf
+*.toml text eol=lf
+*.ini  text eol=lf
+*.cfg  text eol=lf
+
+# PowerShell scripts traditionally use CRLF; let git auto-detect.
+*.ps1  text
+
+# Binary files: do not touch.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.tar  binary
+*.gz   binary
+*.tgz  binary
+*.exe  binary
+*.so   binary
