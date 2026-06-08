@@ -66,11 +66,16 @@
           community.general.ufw:
             logging: 'low'
 
+        # 2026-06-08: items now carry an optional `src` (CIDR or 'any').
+        # Default is 'any' so legacy items without `src` keep their
+        # original wildcard behaviour. group_vars/all/ufw_ports.yml
+        # is the source of truth.
         - name: Apply base firewall rules
           community.general.ufw:
             rule: allow
             port: "{{ item.port }}"
             proto: "{{ item.proto | default('tcp') }}"
+            from_ip: "{{ item.src | default('any') }}"
             comment: "{{ item.comment }}"
           loop: "{{ ufw_base_ports }}"
 
@@ -101,14 +106,42 @@
           when: "'xahau' in group_names"
 
         # === UniFi Configuration ===
+        # 2026-06-08: items now carry an optional `src` (CIDR or 'any').
+        # Default is 'any' so legacy items without `src` keep their
+        # original wildcard behaviour. group_vars/unifi_uos.yml and
+        # group_vars/unifi_legacy.yml are the per-subgroup sources of
+        # truth (parent group `[unifi]` has children `unifi_uos` and
+        # `unifi_legacy`).
         - name: Configure UniFi rules
           community.general.ufw:
             rule: allow
             port: "{{ item.port }}"
             proto: "{{ item.proto }}"
+            from_ip: "{{ item.src | default('any') }}"
             comment: "UniFi - {{ item.comment }}"
           loop: "{{ ufw_unifi_ports }}"
           when: "'unifi' in group_names"
+
+        # === UniFi: retire deprecated rules ===
+        # 2026-06-08: lifecycle support. Per-subgroup files can now
+        # carry an optional `ufw_unifi_deprecated_ports` list of items
+        # that should be REMOVED. Same shape as the additive list, but
+        # `state: absent`. Used to retire ports left behind when a
+        # controller migrates (e.g. legacy 8443/tcp + 8843/tcp on
+        # hosts that have moved to UOS Server's 11443 + 8444). Empty
+        # default lives in group_vars/all/ufw_ports.yml so this task
+        # is a no-op for hosts whose subgroup file doesn't define it.
+        - name: Retire deprecated UniFi rules
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+            from_ip: "{{ item.src | default('any') }}"
+            delete: yes
+          loop: "{{ ufw_unifi_deprecated_ports }}"
+          when:
+            - "'unifi' in group_names"
+            - ufw_unifi_deprecated_ports | length > 0
 
         # === Nginx Configuration ===
         - name: Configure Nginx rules

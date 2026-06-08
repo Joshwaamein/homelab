@@ -1,0 +1,68 @@
+---
+# /opt/ansible/noble-semaphore/group_vars/all/ufw_ports.yml
+# 2026-06-08: Universal `ufw_base_ports` definition. Was previously
+# present only in `vault.yml.example` (a template stub) so the live
+# play failed every run with `'ufw_base_ports' is undefined`. Promoting
+# to a real plain-YAML group_var; no secrets here, so this does NOT
+# belong in vault.yml.
+#
+# Each item supports an optional `src` key (CIDR or 'any'). `config-ufw.yml`
+# was patched at the same time so the base block honors `src`, default
+# `any` for backward compatibility with any list that doesn't carry it.
+#
+# Scopes match the rest of the fleet: LAN side is the broad RFC1918
+# `192.168.0.0/16` (because individual sites are spread across
+# `192.168.1.0/24`, `192.168.40.0/24`, `192.168.50.0/24`,
+# `192.168.68.0/24`, etc., and the play needs one rule that fits all).
+# Per-host or per-group overrides can narrow this further: see
+# `group_vars/unifi_uos.yml` for the mgmt-VLAN-scoped <unifi-vm> rules.
+
+ufw_base_ports:
+  # SSH. The play's pre-block already adds an unscoped allow + rate-limit
+  # for 22/tcp BEFORE enabling UFW (lockout protection); this list
+  # re-asserts it scoped per-source for explicit auditability.
+  - { port: '22',    proto: 'tcp', src: '192.168.0.0/16', comment: 'SSH LAN' }
+  - { port: '22',    proto: 'tcp', src: '100.0.0.0/8',    comment: 'SSH Tailscale' }
+
+  # Zabbix Agent. Scraped from the `zabbix` VM (over LAN where same-site,
+  # over tailnet otherwise).
+  - { port: '10050', proto: 'tcp', src: '192.168.0.0/16', comment: 'Zabbix Agent LAN' }
+  - { port: '10050', proto: 'tcp', src: '100.0.0.0/8',    comment: 'Zabbix Agent Tailscale' }
+
+  # Tailscale wireguard. Tailnet-only; no LAN counterpart needed because
+  # tailscaled handles its own NAT discovery.
+  - { port: '41641', proto: 'udp', src: '100.0.0.0/8',    comment: 'Tailscale wireguard' }
+
+
+# ----------------------------------------------------------------------
+# Empty defaults for every other per-group `ufw_*` var the play
+# references. config-ufw.yml's `when:` clauses (`'foo' in group_names`
+# OR `inventory_hostname in ufw_foo_host_ips`) need these vars to be
+# defined or Ansible bombs out before evaluating the gate. The empty
+# default means: not in the group + not in the host_ips list = no rules
+# applied. Per-group lists should be promoted into their own
+# `group_vars/<group>.yml` files when actually populated; until then,
+# these defaults stop the play from failing on undefined vars for
+# hosts that don't belong to the group anyway.
+ufw_evernode_ports:    []
+ufw_evernode_ranges:   []
+ufw_xahau_ports:       []
+ufw_unifi_ports:       []   # overridden by group_vars/unifi_uos.yml + unifi_legacy.yml
+ufw_unifi_deprecated_ports: []  # rules to RETIRE; populated per-subgroup
+ufw_nginx_ports:       []
+ufw_pihole_ports:      []
+ufw_servarr_ports:     []
+ufw_ansible_ports:     []
+ufw_zabbix_ports:      []
+ufw_pve_data_ports:    []
+ufw_presearch_ports:   []
+ufw_mysterium_ports:   []
+ufw_mysterium_host_ips: []
+ufw_pi4_port:          ''   # the Pi4 task uses a single port string, not a list
+ufw_pi4_host_ips:      []
+ufw_ubuntu_docker_ports: []
+ufw_discord_bot_ports: []
+ufw_motioneye_ports:   []
+ufw_bitwarden_ports:   []
+ufw_smokeping_ports:   []
+ufw_ai_ports:          []
