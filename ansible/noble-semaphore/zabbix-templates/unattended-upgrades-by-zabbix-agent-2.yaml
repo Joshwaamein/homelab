@@ -1,0 +1,100 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 846977d1dfed4968bc5f8bdb363285bc
+      name: 'Templates/Operating systems'
+  templates:
+    - uuid: f2c0b4249aee4a96b26fb294ec4e1eee
+      template: 'Unattended-Upgrades by Zabbix agent 2'
+      name: 'Unattended-Upgrades by Zabbix agent 2'
+      description: 'Surfaces unattended-upgrades fleet health: timer state, log freshness, dpkg errors, pending-reboot age, config drift, package holds. Vikunja #220.'
+      groups:
+        - name: 'Templates/Operating systems'
+      items:
+        - uuid: f93a5c6ba9c343d8b7ae504b2aa18c6f
+          name: 'UU: sha256 of /etc/apt/apt.conf.d/50unattended-upgrades'
+          type: ZABBIX_ACTIVE
+          key: uu.config.hash
+          delay: 30s
+          history: 30d
+          value_type: CHAR
+          trends: '0'
+          triggers:
+            - uuid: 796afeddd7cd432eb5481a0ec92f7f74
+              expression: 'last(/Unattended-Upgrades by Zabbix agent 2/uu.config.hash,#1)<>last(/Unattended-Upgrades by Zabbix agent 2/uu.config.hash,#2)'
+              name: 'UU: 50unattended-upgrades config drift on {HOST.NAME}'
+              priority: WARNING
+              description: 'sha256 of /etc/apt/apt.conf.d/50unattended-upgrades changed between two consecutive checks. Catches manual edits that drift from the Ansible-managed version.'
+        - uuid: a2c7e7e676974e5ca07c2856e77cc8e5
+          name: 'UU: ERROR line count in current log'
+          type: ZABBIX_ACTIVE
+          key: uu.errors.recent
+          delay: 30s
+          history: 30d
+          triggers:
+            - uuid: ab52a88411b44929b31a06e1754d0e4f
+              expression: 'last(/Unattended-Upgrades by Zabbix agent 2/uu.errors.recent)>0'
+              name: 'UU: ERROR lines in unattended-upgrades log on {HOST.NAME}'
+              priority: AVERAGE
+              description: 'ERROR lines in /var/log/unattended-upgrades/unattended-upgrades.log. Resets weekly via logrotate.'
+        - uuid: fbe9b41d19574060a682eba90f1791d0
+          name: 'UU: held package count'
+          type: ZABBIX_ACTIVE
+          key: uu.held.count
+          delay: 30s
+          history: 30d
+        - uuid: 24561a2595d842ec873ca4a83306b061
+          name: 'UU: log age (seconds since last write)'
+          type: ZABBIX_ACTIVE
+          key: uu.log.age
+          delay: 30s
+          history: 30d
+          units: s
+          triggers:
+            - uuid: 06a82552fdff47d78f3cb14d500b6e4b
+              expression: 'last(/Unattended-Upgrades by Zabbix agent 2/uu.log.age)>172800'
+              name: 'UU: log not written for 48h on {HOST.NAME}'
+              priority: HIGH
+              description: 'unattended-upgrades.log should update daily. >48h means the timer fired but UU itself is broken (or hasn''t fired at all).'
+        - uuid: da672a96f5a04e61b115b6ee2a567d7d
+          name: 'UU: reboot-required age (seconds, 0 = no reboot pending)'
+          type: ZABBIX_ACTIVE
+          key: uu.reboot.pending.age
+          delay: 30s
+          history: 30d
+          units: s
+          triggers:
+            - uuid: 36dc7d7e0891468bbc4bc900067d8cd1
+              expression: 'last(/Unattended-Upgrades by Zabbix agent 2/uu.reboot.pending.age)>86400'
+              name: 'UU: reboot pending for >24h on {HOST.NAME}'
+              priority: AVERAGE
+              description: 'Auto-reboot is on fleet-wide. A reboot-required marker still present after 24h means automatic_reboot is failing or disabled.'
+        - uuid: 6411da99867246b8ab679be405e40586
+          name: 'UU: apt-daily-upgrade.timer state'
+          type: ZABBIX_ACTIVE
+          key: 'uu.timer.active[apt-daily-upgrade.timer]'
+          delay: 30s
+          history: 30d
+          value_type: CHAR
+          trends: '0'
+          triggers:
+            - uuid: f2940cc8f78245319a625bc52f1ba42a
+              expression: 'last(/Unattended-Upgrades by Zabbix agent 2/uu.timer.active[apt-daily-upgrade.timer])<>"active"'
+              name: 'UU: apt-daily-upgrade.timer not active on {HOST.NAME}'
+              priority: HIGH
+              description: 'The apt-daily-upgrade.timer drives unattended-upgrades. If this is not active, security patches will silently stop applying.'
+        - uuid: 731479ffd4f14b2fb433632ffa0d1f62
+          name: 'UU: apt-daily.timer state'
+          type: ZABBIX_ACTIVE
+          key: 'uu.timer.active[apt-daily.timer]'
+          delay: 30s
+          history: 30d
+          value_type: CHAR
+          trends: '0'
+          triggers:
+            - uuid: 1d7c63c399d04b45a808a0b35805c7a3
+              expression: 'last(/Unattended-Upgrades by Zabbix agent 2/uu.timer.active[apt-daily.timer])<>"active"'
+              name: 'UU: apt-daily.timer not active on {HOST.NAME}'
+              priority: AVERAGE
+              description: 'apt-daily.timer downloads but does not install. Less critical than apt-daily-upgrade.timer but still indicative.'
+

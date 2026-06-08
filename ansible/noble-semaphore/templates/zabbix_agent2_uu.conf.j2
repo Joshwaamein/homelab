@@ -1,0 +1,28 @@
+# /etc/zabbix/zabbix_agent2.d/unattended-upgrades.conf
+# Unattended-upgrades health UserParameters (Vikunja #220).
+# Managed by Ansible. Do not edit by hand.
+#
+# All paths and binaries used here are world-readable / unprivileged,
+# so no sudoers entry is required.
+
+# systemctl is-active <timer>. Returns "active", "inactive", "failed", etc.
+# Trigger on <>"active". Pass "apt-daily.timer" or "apt-daily-upgrade.timer".
+UserParameter=uu.timer.active[*],systemctl is-active "$1" 2>/dev/null; true
+
+# Seconds since unattended-upgrades.log was last written.
+# >172800 (48h) means the daily timer is not running. -1 if file missing.
+UserParameter=uu.log.age,if [ -f /var/log/unattended-upgrades/unattended-upgrades.log ]; then echo $(( $(date +%s) - $(stat -c %Y /var/log/unattended-upgrades/unattended-upgrades.log) )); else echo -1; fi
+
+# Seconds since /var/run/reboot-required was created. 0 means no pending reboot.
+# Auto-reboot is on, so >86400 (24h) means the reboot itself is failing.
+UserParameter=uu.reboot.pending.age,if [ -f /var/run/reboot-required ]; then echo $(( $(date +%s) - $(stat -c %Y /var/run/reboot-required) )); else echo 0; fi
+
+# Count of ERROR lines in the current (un-rotated) unattended-upgrades.log.
+# Trigger on >0. Resets after weekly logrotate.
+UserParameter=uu.errors.recent,awk "/ERROR/{c++} END{print c+0}" /var/log/unattended-upgrades/unattended-upgrades.log 2>/dev/null
+
+# sha256 of the unattended-upgrades config. Trigger on change to detect drift.
+UserParameter=uu.config.hash,sha256sum /etc/apt/apt.conf.d/50unattended-upgrades 2>/dev/null | cut -d" " -f1
+
+# Number of held packages. Inform-only (already used libnetplan1 hold on pve-myst).
+UserParameter=uu.held.count,apt-mark showhold 2>/dev/null | wc -l

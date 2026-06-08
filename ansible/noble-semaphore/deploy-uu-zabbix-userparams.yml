@@ -1,0 +1,51 @@
+---
+# Deploys unattended-upgrades health UserParameters to every Debian/Ubuntu host
+# running zabbix-agent2. Vikunja #220.
+#
+# The zabbix user is added to the adm group so it can read
+# /var/log/unattended-upgrades/ (mode 0750, root:adm). This is the same
+# pattern Debian uses to let monitoring agents read system logs without
+# granting any write access. No sudoers entry is required.
+- name: Deploy unattended-upgrades Zabbix UserParameters
+  hosts: ubuntu_vms, pbs, hosts
+  become: true
+  gather_facts: true
+  ignore_unreachable: true
+  tags: [zabbix, uu, monitoring]
+
+  tasks:
+    - name: Skip non-Debian hosts
+      ansible.builtin.meta: end_host
+      when: ansible_os_family | default("") != "Debian"
+
+    - name: Confirm zabbix-agent2 is installed
+      ansible.builtin.stat:
+        path: /etc/zabbix/zabbix_agent2.d
+      register: zabbix_agent2_dir
+
+    - name: Skip hosts without zabbix-agent2
+      ansible.builtin.meta: end_host
+      when: not zabbix_agent2_dir.stat.exists
+
+    - name: Add zabbix user to adm group (read /var/log/unattended-upgrades)
+      ansible.builtin.user:
+        name: zabbix
+        groups: adm
+        append: true
+      notify: Restart zabbix-agent2
+
+    - name: Deploy unattended-upgrades UserParameters
+      ansible.builtin.template:
+        src: templates/zabbix_agent2_uu.conf.j2
+        dest: /etc/zabbix/zabbix_agent2.d/unattended-upgrades.conf
+        owner: root
+        group: zabbix
+        mode: "0640"
+        backup: true
+      notify: Restart zabbix-agent2
+
+  handlers:
+    - name: Restart zabbix-agent2
+      ansible.builtin.systemd:
+        name: zabbix-agent2
+        state: restarted
