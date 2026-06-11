@@ -223,6 +223,7 @@ ansible-playbook fstrim-vm-storage-reclaim.yml
 - **Docker logs:** 10MB max per container, 3 files retained
 - **Zabbix logs:** Weekly rotation, 12 weeks retention, 100MB max
 - **APT logs:** Weekly rotation, 4 weeks retention
+- **Cloudflare DDNS logs (`evernode`/`xahau` groups only):** Weekly rotation, 4 weeks retention, 5MB cap. Covers `/var/log/cloudflare_ddns.log` written by the `/usr/local/sbin/cloudflare_ddns.sh` cron.
 
 **Usage:**
 ```bash
