@@ -1,5 +1,24 @@
 # Changelog
 
+## [2026-06-11] - Cloudflare DDNS log rotation
+
+### Added
+- **`configure-log-rotation.yml`** — new task "Configure Cloudflare DDNS
+  log rotation" gated on `'evernode' in group_names or 'xahau' in
+  group_names`. Drops `/etc/logrotate.d/cloudflare-ddns` covering
+  `/var/log/cloudflare_ddns.log`: weekly rotation, 4 weeks retention,
+  5MB cap, compress with delaycompress, `create 0640 root root`.
+  Targets hosts running `/usr/local/sbin/cloudflare_ddns.sh` from cron,
+  whose log files were observed growing unbounded in the host audit.
+- **`PLAYBOOKS.md`** — Configurations list under "Log Rotation" now
+  documents the new DDNS rule alongside system / Docker / Zabbix / APT.
+
+### Notes
+- No script changes. Cron cadence and the script itself are
+  untouched in this commit. Only log retention behaviour changes.
+- Existing oversized `cloudflare_ddns.log` files will be picked up
+  on the first weekly logrotate run after the play executes.
+
 ## [2026-06-08] - UniFi controller migration + config-ufw.yml repair
 
 ### Added

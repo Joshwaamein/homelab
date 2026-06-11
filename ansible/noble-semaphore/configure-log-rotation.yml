@@ -96,6 +96,28 @@
         mode: '0644'
       when: ansible_facts.services['zabbix-agent2.service'] is defined or ansible_facts.services['zabbix-agent.service'] is defined
 
+    # Cloudflare DDNS log rotation. Targets hosts in the evernode and xahau
+    # groups, which run /usr/local/sbin/cloudflare_ddns.sh from cron.
+    # Without rotation the per-run "unchanged" log line grows unbounded.
+    - name: Configure Cloudflare DDNS log rotation
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/cloudflare-ddns
+        content: |
+          /var/log/cloudflare_ddns.log {
+              weekly
+              rotate 4
+              maxsize 5M
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 0640 root root
+          }
+        mode: '0644'
+        owner: root
+        group: root
+      when: "'evernode' in group_names or 'xahau' in group_names"
+
     - name: Test logrotate configuration
       ansible.builtin.command: logrotate -d /etc/logrotate.conf
       register: logrotate_test
@@ -126,6 +148,7 @@
           - "System logs: Daily rotation, 7 days retention"
           - "Docker logs: 10MB max per container, 3 files"
           - "Zabbix logs: Weekly rotation, 12 weeks retention"
+          - "DDNS logs (evernode/xahau): Weekly rotation, 4 weeks, 5MB cap"
           - "═══════════════════════════════════════════"
 
   handlers:
