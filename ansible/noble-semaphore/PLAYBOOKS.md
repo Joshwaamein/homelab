@@ -93,6 +93,42 @@ ansible-playbook secure_ssh_configuration.yml
 
 ---
 
+### 3a. Disable Cloud-Init Password Auth (`disable-ssh-password-auth.yml`) ⭐ NEW
+
+**Purpose:** Companion to `secure_ssh_configuration.yml`. Ubuntu cloud-init
+images ship `/etc/ssh/sshd_config.d/50-cloud-init.conf` with
+`PasswordAuthentication yes`, which **overrides** the main `sshd_config`.
+Because sshd is first-match-wins and the drop-in directory is read
+alphabetically, that file can silently re-enable password auth even after
+the main config is hardened. This play drops a low-numbered
+`01-disable-password-auth.conf` that sorts *before* the cloud-init file and
+wins.
+
+**Targets:** `ubuntu_vms`
+
+**Why a `01-` (not `99-`) drop-in:** first-match-wins means a higher-numbered
+file loads too late and is ignored. `01-` is read first and takes effect.
+
+**Safety:**
+- `validate: sshd -t` rejects a bad config before it is written
+- Reloads (not restarts) sshd, preserving live sessions
+- Asserts `/root/.ssh/authorized_keys` exists before enforcing key-only
+- Backstop guard refuses to run on any Proxmox VE host (`pveversion` present)
+
+**Usage:**
+```bash
+ansible-playbook disable-ssh-password-auth.yml --check --diff
+ansible-playbook disable-ssh-password-auth.yml --limit <one-host> --diff
+ansible-playbook disable-ssh-password-auth.yml --diff
+```
+
+**Verify:** `sshd -T | grep passwordauthentication` should report `no`.
+
+**Notes:** Hypervisors and PBS (Debian, no cloud-init drop-in) are already
+key-only and excluded.
+
+---
+
 ### 4. Security Audit (`security-audit-scan.yml`)
 
 **Purpose:** Comprehensive security scanning and vulnerability detection
