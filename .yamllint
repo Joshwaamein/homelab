@@ -1,0 +1,26 @@
+# Relaxed yamllint for an existing Ansible repo. Tightens over time.
+extends: relaxed
+
+rules:
+  line-length:
+    max: 200
+    level: warning
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  truthy:
+    allowed-values: ["true", "false", "yes", "no"]
+    check-keys: false
+  document-start: disable
+  trailing-spaces:
+    level: warning
+  empty-lines:
+    max: 3
+    level: warning
+
+ignore: |
+  inventory
+  inventory.template
+  *.bak
+  *.bak-*
+  *.bak.*

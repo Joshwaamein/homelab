@@ -1,0 +1,96 @@
+name: Ansible CI
+
+# Validate the Ansible content on every change. This does NOT deploy
+# anything: it only lints, syntax-checks, and scans for leaked secrets.
+# The fleet is patched per-host and orchestrated via cron on the control
+# node; CI here is a pre-merge safety net, not a runner with fleet access.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "ansible/**"
+      - ".github/workflows/ansible-ci.yml"
+  pull_request:
+    paths:
+      - "ansible/**"
+      - ".github/workflows/ansible-ci.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+  lint-and-syntax:
+    name: Lint and syntax-check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible/noble-semaphore
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible + linters
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core>=2.16" ansible-lint yamllint
+
+      - name: Install required collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: yamllint (non-blocking)
+        continue-on-error: true
+        run: yamllint -c ../../.yamllint .
+
+      - name: ansible-lint (non-blocking)
+        continue-on-error: true
+        run: ansible-lint || true
+
+      - name: Syntax-check every top-level playbook (non-blocking for now)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          # Use the tracked template so group names resolve; the real
+          # inventory is gitignored and never present in CI.
+          inv=inventory.template
+          rc=0
+          for pb in *.yml; do
+            case "$pb" in
+              requirements.yml) continue ;;
+            esac
+            # Only treat files that look like playbooks (have a top-level
+            # 'hosts:' key) as playbooks; skip var files.
+            if grep -qE '^- |^[[:space:]]*hosts:' "$pb"; then
+              echo "::group::syntax-check $pb"
+              ansible-playbook --syntax-check -i "$inv" "$pb" || { echo "::warning file=ansible/noble-semaphore/$pb::syntax-check failed"; rc=1; }
+              echo "::endgroup::"
+            fi
+          done
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::One or more playbooks failed syntax-check (non-blocking). Known issue: zabbix_hostgroup module rename. Tighten to blocking once cleared."
+          fi
+          # Non-blocking for now: always exit 0 so CI stays green while the
+          # backlog of pre-existing issues is worked down. Flip to 'exit $rc'
+          # (and drop continue-on-error) to make this a hard gate.
+          exit 0
+

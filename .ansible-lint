@@ -1,0 +1,22 @@
+# ansible-lint config for a repo of standalone operational playbooks
+# (not a role/collection). Production profile is aspirational; for now
+# we skip rules that are noisy for this style and let CI report the rest
+# without blocking (see .github/workflows/ansible-ci.yml).
+
+exclude_paths:
+  - inventory
+  - inventory.template
+  - .github/
+  - "**/*.bak"
+  - "**/*.bak-*"
+  - "**/*.bak.*"
+
+skip_list:
+  - yaml[line-length]      # handled (relaxed) by yamllint
+  - name[casing]           # existing task names use mixed casing
+  - fqcn[action-core]      # builtin short names are acceptable here
+  - no-changed-when        # many ad-hoc command tasks
+  - command-instead-of-shell
+
+warn_list:
+  - experimental
