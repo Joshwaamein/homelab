@@ -1,5 +1,25 @@
 # Changelog
 
+## [2026-06-13] - Top-level README rewrite
+
+### Changed
+- **`README.md`** rewritten as a concise index that delegates detail to
+  the canonical sub-docs (`ANSIBLE-README.md`, `PLAYBOOKS.md`, and the
+  per-directory READMEs) instead of duplicating and drifting from them.
+  - Corrected the playbook count (was "10+", now 22) and grouped them by
+    the same taxonomy `PLAYBOOKS.md` uses (Security / System maintenance
+    / Monitoring & management / Backup & config).
+  - Listed every current playbook, including ones the old README never
+    mentioned (fail2ban, log rotation, LE cert management, docker health
+    and cleanup, fstrim, qemu-guest-agent, SMART monitoring, PBS verify,
+    security-audit scan, password-auth disable).
+  - Added the `scripts/pbs/` directory and the newer linux scripts
+    (Cloudflare DDNS, update checks, reputation diagnostics) to the
+    scripts overview.
+  - Removed stale/inconsistent host counts and the duplicated
+    auto-update schedule; that operational detail lives in the sub-docs.
+  - Net: 291 → 98 lines, no real hostnames/IPs/ports/secrets.
+
 ## [2026-06-11] - Cloudflare DDNS log rotation
 
 ### Added
