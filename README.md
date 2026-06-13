@@ -127,3 +127,12 @@ Personal homelab configuration. Use at your own risk.
 **Repository:** https://github.com/Joshwaamein/homelab ·
 **Start here:** [ANSIBLE-README.md](ansible/noble-semaphore/ANSIBLE-README.md)
 and [PLAYBOOKS.md](ansible/noble-semaphore/PLAYBOOKS.md)
+
+## Support
+
+If this project is useful to you, consider supporting it:
+
+- ☕ [Buy Me a Coffee](https://buymeacoffee.com/joshmein)
+- ₿ BTC: `bc1qt4r02qp2w3gt8qfdepg89cmtfaaf6at33qd44r`
+- Ξ ETH: `0xdBE0d9a2737cBB627F55c33Ac06AD66743731E15`
+- ✕ XRP: `rPgJhTe2prZnrMFoUZ3pJj9MMKLmyDUy65`
