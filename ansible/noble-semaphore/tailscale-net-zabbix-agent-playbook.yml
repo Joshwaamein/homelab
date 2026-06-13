@@ -55,9 +55,11 @@
       failed_when: false
       when: ansible_os_family == "Debian"
 
+    # 2026-06-08: URL is conditional on Ubuntu vs Debian to support the
+    # motioneye LXC (Debian 13). Was Ubuntu-only.
     - name: Add Zabbix repository
       ansible.builtin.get_url:
-        url: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ zabbix_version }}+ubuntu{{ ansible_distribution_version }}_all.deb"
+        url: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }}/pool/main/z/zabbix-release/zabbix-release_latest_{{ zabbix_version }}+{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }}{{ ansible_distribution_major_version if ansible_distribution == 'Debian' else ansible_distribution_version }}_all.deb"
         dest: /tmp/zabbix-release.deb
         mode: '0644'
       register: download_repo

@@ -2,3 +2,8 @@
 # PBS hosts run as root over SSH and ship without sudo on Debian 13 (trixie).
 # Disable privilege escalation so ansible does not try to invoke sudo.
 ansible_become: false
+
+# 2026-06-07: PBS hosts ship Proxmox PBS / PDM repos.
+unattended_upgrades_extra_origins:
+  - "origin=Proxmox,codename=${distro_codename},label=Proxmox Backup System Debian Repository"
+  - "origin=Proxmox,codename=${distro_codename},label=Proxmox Datacenter Manager Debian Repository"
